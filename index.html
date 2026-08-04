@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>UPI 거래 테스트 매니저</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="UPI Manager">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root{--blue:#00338D;--blue2:#0056b3;--red:#C8102E;--dark-red:#A50D24;--teal:#008077;--dark-teal:#005f58;--gray:#ececec;--bg:#f0f2f5;--grad:linear-gradient(135deg,#00338D 0%,#0056b3 100%);--teal-grad:linear-gradient(135deg,#008077 0%,#005f58 100%);--card-shadow:0 4px 15px rgba(0,0,0,0.08);--tr:all 0.3s cubic-bezier(0.4,0,0.2,1);}
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    body{background:var(--bg);margin:0;padding:0;font-family:-apple-system,'Pretendard','Noto Sans KR',sans-serif;overflow-x:hidden;min-height:100vh;}
+    .screen{position:fixed;top:0;left:0;width:100%;height:100%;overflow-y:auto;transition:var(--tr);transform:translateX(100%);opacity:0;pointer-events:none;}
+    .screen.active{transform:translateX(0);opacity:1;pointer-events:all;}
+    .screen.slide-left{transform:translateX(-30%);opacity:0;pointer-events:none;}
+    .container{max-width:480px;margin:0 auto;padding:20px;}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:white;box-shadow:0 2px 10px rgba(0,0,0,0.06);position:sticky;top:0;z-index:100;}
+    .top-bar h2{margin:0;font-size:17px;font-weight:700;color:#111;}
+    .back-btn,.icon-btn{width:36px;height:36px;border:none;background:var(--bg);border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:var(--tr);}
+    .back-btn:active,.icon-btn:active{transform:scale(0.9);background:#ddd;}
+
+    /* 메인 — 흰색 테마 */
+    #screen-main{background:#f0f2f5;}
+    .main-inner{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px 30px;}
+    .main-logo-wrap{margin-bottom:12px;animation:fadeDown 0.6s ease;}
+    .main-logo{height:110px;display:block;}
+    .main-subtitle{color:#7a90b8;font-size:13px;margin-bottom:48px;letter-spacing:1px;animation:fadeDown 0.6s ease 0.1s both;}
+    .main-btn{width:100%;max-width:320px;padding:18px;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;transition:var(--tr);margin-bottom:14px;animation:fadeUp 0.5s ease both;}
+    .main-btn-primary{background:var(--grad);color:white;box-shadow:0 8px 24px rgba(0,51,141,0.25);}
+    .main-btn-primary:active{transform:scale(0.97);}
+    .main-btn-secondary{background:white;color:var(--blue);border:1.5px solid #c8d8ff;box-shadow:0 4px 12px rgba(0,51,141,0.08);animation-delay:0.1s;}
+    .main-btn-secondary:active{transform:scale(0.97);background:#f0f5ff;}
+    .main-settings-btn{position:absolute;top:20px;right:20px;background:white;border:1px solid #dde5f5;color:var(--blue);width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr);box-shadow:0 2px 8px rgba(0,51,141,0.1);}
+    .main-settings-btn:active{transform:scale(0.9);}
+    .main-version{position:absolute;bottom:20px;color:#aac;font-size:11px;}
+
+    /* 검색 바 */
+    .search-bar-wrap{display:none;padding:10px 20px;background:white;border-bottom:1px solid #eee;}
+    .search-bar-wrap.open{display:block;}
+    .search-input{width:100%;padding:10px 14px;border:1.5px solid #c8d8ff;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;transition:var(--tr);}
+    .search-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,51,141,0.08);}
+
+    /* 브랜드 선택 화면 — flex 레이아웃 */
+    #screen-brand-select{display:flex !important;flex-direction:column;}
+    #screen-brand-select:not(.active){pointer-events:none;opacity:0;}
+
+    /* 다음 버튼 슬라이드 애니메이션 */
+    .next-btn-wrap{
+      flex-shrink:0;
+      padding:12px 20px 28px;
+      background:white;
+      box-shadow:0 -4px 16px rgba(0,0,0,0.08);
+      transform:translateY(100%);
+      transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .next-btn-wrap.visible{transform:translateY(0);}
+    .brand-select-card{display:flex;align-items:center;gap:14px;background:white;border-radius:16px;padding:14px 16px;box-shadow:var(--card-shadow);cursor:pointer;transition:var(--tr);border:2px solid transparent;}
+    .brand-select-card:active{transform:scale(0.98);}
+    .brand-select-card.selected{border-color:var(--blue);background:#f0f5ff;}
+    .brand-thumb{width:48px;height:48px;border-radius:12px;background:var(--gray);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;}
+    .brand-thumb img{width:100%;height:100%;object-fit:cover;}
+    .brand-select-name{font-weight:700;font-size:15px;color:#111;}
+    .brand-select-meta{font-size:12px;color:#888;margin-top:2px;}
+    .brand-select-check{margin-left:auto;width:24px;height:24px;border-radius:50%;background:var(--blue);display:none;align-items:center;justify-content:center;color:white;font-size:14px;}
+    .brand-select-card.selected .brand-select-check{display:flex;}
+    .float-next-btn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);width:calc(100% - 40px);max-width:440px;padding:16px;background:var(--grad);color:white;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,51,141,0.35);transition:var(--tr);}
+    .float-next-btn:active{transform:translateX(-50%) scale(0.97);}
+    .float-next-btn:disabled{background:#ccc;box-shadow:none;}
+
+    /* 테스트 입력 — 하단 버튼 공간 불필요 (인라인 배치) */
+    #screen-test .container{padding-bottom:0;}
+    .section-label{font-size:13px;color:#555;font-weight:700;margin:20px 0 10px;padding-left:10px;border-left:4px solid var(--blue);}
+    .store-input-wrap{background:white;border-radius:14px;padding:14px 16px;box-shadow:var(--card-shadow);margin-bottom:4px;}
+    .store-input-wrap label{font-size:12px;color:#888;font-weight:600;}
+    .store-input-wrap input{width:100%;border:none;outline:none;font-size:16px;font-weight:700;color:#111;margin-top:4px;background:transparent;}
+    .brand-badge{display:inline-flex;align-items:center;gap:6px;background:#f0f5ff;border:1px solid #c8d8ff;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--blue);margin-bottom:12px;}
+    .record-tabs{display:flex;align-items:center;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;white-space:nowrap;margin:12px 0;}
+    .record-tabs::-webkit-scrollbar{display:none;}
+    .tab-btn{min-width:40px;height:40px;flex-shrink:0;border-radius:50%;border:2px solid #ddd;background:white;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:var(--tr);color:#666;}
+    .tab-btn.active{background:var(--grad);color:white;border-color:transparent;box-shadow:0 4px 12px rgba(0,51,141,0.3);}
+    .tab-btn:active{transform:scale(0.9);}
+    .add-tab-btn{min-width:40px;height:40px;flex-shrink:0;border-radius:50%;border:2px dashed var(--teal);background:none;color:var(--teal);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr);}
+    .add-tab-btn:active{transform:scale(0.9) rotate(90deg);}
+    .button-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+    .button-grid.triple{grid-template-columns:1fr 1fr 1fr;}
+    .item-btn{padding:13px 5px;border:2px solid #e8e8e8;border-radius:12px;background:white;cursor:pointer;font-size:13px;font-weight:600;color:#555;transition:var(--tr);}
+    .item-btn:active{transform:scale(0.96);}
+    .item-btn.selected{background:var(--grad);color:white;border-color:transparent;box-shadow:0 4px 12px rgba(0,51,141,0.25);}
+    .amount-wrap{position:relative;display:flex;align-items:center;background:white;border-radius:12px;box-shadow:var(--card-shadow);}
+    .amount-wrap input{width:100%;padding:14px 40px 14px 16px;border:none;outline:none;font-size:18px;font-weight:700;text-align:right;background:transparent;border-radius:12px;}
+    .amount-unit{position:absolute;right:14px;font-weight:700;color:#888;font-size:16px;}
+    .toggle-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:white;border-radius:12px;border:1px solid #eee;box-shadow:var(--card-shadow);}
+    .toggle-label{font-size:13px;font-weight:600;color:#444;}
+    .toggle-btn{width:48px;height:26px;border-radius:13px;border:none;font-weight:700;cursor:pointer;color:white;font-size:11px;transition:var(--tr);}
+    .toggle-btn.state-na{background:#bbb;}
+    .toggle-btn.state-y{background:var(--teal);}
+    .toggle-btn.state-n{background:var(--dark-red);}
+    .toggle-btn:active{transform:scale(0.92);}
+    textarea{width:100%;padding:14px;border:1px solid #eee;border-radius:12px;font-size:14px;background:white;outline:none;resize:none;box-shadow:var(--card-shadow);font-family:inherit;}
+    .card-panel{background:#f0f7f6;padding:16px;border-radius:16px;border:1px solid #d0e8e6;}
+    .card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #d0e8e6;}
+    .card-row:last-child{border-bottom:none;}
+    .card-row-label{font-size:13px;color:#444;font-weight:600;}
+    .card-row input{width:58%;padding:8px 12px;border:1px solid #c0dcd9;border-radius:8px;font-size:13px;background:white;outline:none;}
+
+    /* 하단 버튼 — 스크롤 흐름 내 인라인 배치 */
+    .bottom-bar{
+      display:flex;gap:8px;
+      padding:20px 0 32px;
+      width:100%;
+    }
+    .bb-btn{flex:1;padding:14px 4px;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;transition:var(--tr);}
+    .bb-btn:active{transform:scale(0.96);}
+    .bb-summary{background:var(--bg);color:var(--blue);border:1.5px solid var(--blue);}
+    .bb-upload{background:var(--grad);color:white;box-shadow:0 4px 12px rgba(0,51,141,0.3);}
+    .bb-excel{background:var(--teal-grad);color:white;box-shadow:0 4px 12px rgba(0,128,119,0.3);}
+
+    /* 모달 공통 */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;padding:16px;align-items:flex-end;backdrop-filter:blur(4px);}
+    .modal-overlay.show{display:flex;}
+    .modal-sheet{background:white;border-radius:24px 24px 20px 20px;width:100%;max-width:480px;margin:0 auto;max-height:88vh;overflow-y:auto;animation:slideUp 0.35s cubic-bezier(0.4,0,0.2,1);padding:20px;position:relative;}
+    .modal-handle{width:40px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 16px;}
+
+    /* 요약 */
+    .report-box{background:#f8f9ff;padding:16px;border-radius:14px;border:1.5px solid #dce6ff;margin-bottom:14px;}
+    .report-title{font-size:14px;font-weight:800;color:var(--blue);border-bottom:2px solid #dce6ff;padding-bottom:10px;margin-bottom:12px;}
+    .status-tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;color:white;margin-right:4px;}
+    .tag-success{background:var(--teal);}
+    .tag-fail{background:var(--red);}
+    .summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dotted #ddd;font-size:13px;}
+    .summary-tab-list{display:flex;gap:8px;overflow-x:auto;margin:12px 0;-webkit-overflow-scrolling:touch;}
+    .summary-tab-list::-webkit-scrollbar{display:none;}
+
+    /* 가맹점 현황 */
+    #screen-brands .container{padding-bottom:100px;}
+    .brand-grid{display:flex;flex-direction:column;gap:14px;margin-top:16px;}
+    .brand-card{background:white;border-radius:20px;padding:18px;box-shadow:var(--card-shadow);cursor:pointer;transition:var(--tr);border:1.5px solid transparent;}
+    .brand-card:active{transform:scale(0.98);border-color:var(--blue);}
+    .brand-card-header{display:flex;align-items:center;gap:14px;}
+    .brand-icon{width:56px;height:56px;border-radius:14px;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;}
+    .brand-icon img{width:100%;height:100%;object-fit:cover;}
+    .brand-name{font-size:17px;font-weight:800;color:#111;}
+    .brand-meta{font-size:12px;color:#888;margin-top:3px;}
+    .brand-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0;}
+    .chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+    .chip.success{background:#e6f7f5;color:var(--teal);border:1px solid #b0ddd9;}
+    .chip.fail{background:#fff0f0;color:var(--red);border:1px solid #ffc8c8;}
+    .chip.neutral{background:#eef3ff;color:var(--blue);border:1px solid #c8d8ff;}
+
+    /* 브랜드 상세 */
+    #screen-brand-detail .container{padding-bottom:40px;}
+    .detail-hero{background:var(--grad);padding:24px 20px;display:flex;align-items:center;gap:16px;position:relative;}
+    .detail-hero-icon{width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:32px;overflow:hidden;border:2px solid rgba(255,255,255,0.2);}
+    .detail-hero-icon img{width:100%;height:100%;object-fit:cover;}
+    .detail-hero-name{font-size:22px;font-weight:800;color:white;}
+    .detail-hero-meta{font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;}
+    .hero-edit-btn{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--tr);}
+    .hero-edit-btn:active{transform:scale(0.9);}
+
+    /* 통합 지원 현황 테이블 */
+    .support-table-wrap{background:white;border-radius:16px;box-shadow:var(--card-shadow);overflow:hidden;margin-top:4px;}
+    .support-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .support-table th{background:#f4f6fb;color:#555;font-weight:700;padding:10px 12px;text-align:left;border-bottom:1px solid #eee;}
+    .support-table td{padding:10px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle;}
+    .support-table tr:last-child td{border-bottom:none;}
+    .support-table .card-label{font-weight:700;color:#333;white-space:nowrap;width:52px;}
+    .method-chips{display:flex;flex-wrap:wrap;gap:5px;}
+    .method-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+    .method-chip.mc-y{background:#e6f7f5;color:var(--teal);border:1px solid #b0ddd9;}
+    .method-chip.mc-n{background:#fff0f0;color:var(--red);border:1px solid #ffc8c8;}
+    .edit-support-btn{font-size:12px;padding:5px 14px;border:1px solid var(--blue);color:var(--blue);background:white;border-radius:20px;cursor:pointer;margin:10px 12px 12px;display:inline-block;transition:var(--tr);}
+    .edit-support-btn:active{background:#f0f5ff;}
+
+    /* 현황 직접 수정 버튼 그리드 */
+    .ov-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:8px;}
+    .ov-group-label{font-size:12px;font-weight:800;color:#555;margin-bottom:6px;padding-left:2px;}
+    .ov-btns{display:flex;flex-wrap:wrap;gap:6px;}
+    .ov-btn{padding:7px 13px;border-radius:20px;border:1.5px solid #ddd;background:#f8f8f8;font-size:12px;font-weight:700;cursor:pointer;transition:var(--tr);color:#777;}
+    .ov-btn.ov-y{background:#e6f7f5;color:var(--teal);border-color:#b0ddd9;}
+    .ov-btn.ov-n{background:#fff0f0;color:var(--red);border-color:#ffc8c8;}
+    .ov-btn.ov-na{background:#f0f0f0;color:#aaa;border-color:#ddd;}
+
+    /* 특이사항 */
+    .notes-box{background:white;border-radius:16px;padding:16px;box-shadow:var(--card-shadow);margin-top:4px;}
+    .notes-view{font-size:13px;color:#333;line-height:1.7;white-space:pre-wrap;min-height:36px;}
+    .notes-view.empty{color:#bbb;font-style:italic;}
+    .notes-edit-btn{font-size:12px;padding:5px 12px;border:1px solid var(--blue);color:var(--blue);background:white;border-radius:20px;cursor:pointer;margin-top:8px;transition:var(--tr);}
+
+    /* 날짜별 이력 세션 블록 */
+    .session-block{background:white;border-radius:16px;box-shadow:var(--card-shadow);margin-top:12px;overflow:hidden;cursor:pointer;transition:var(--tr);border:1.5px solid transparent;}
+    .session-block:active{border-color:var(--blue);}
+    .session-block-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;}
+    .session-block-date{font-size:13px;font-weight:700;color:#333;}
+    .session-block-store{font-size:12px;color:#888;margin-top:2px;}
+    .session-block-preview{padding:0 16px 14px;border-top:1px solid #f5f5f5;}
+    .session-preview-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#666;padding:4px 0;}
+    .result-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .dot-y{background:var(--teal);}
+    .dot-n{background:var(--red);}
+    .dot-na{background:#ccc;}
+
+    /* 세션 상세 모달 */
+    .sess-detail-tabs{display:flex;gap:8px;overflow-x:auto;margin:12px 0;-webkit-overflow-scrolling:touch;}
+    .sess-detail-tabs::-webkit-scrollbar{display:none;}
+
+    /* 폼 공통 */
+    .form-row{margin-bottom:16px;}
+    .form-label{font-size:13px;font-weight:700;color:#333;margin-bottom:8px;display:block;}
+    .form-input{width:100%;padding:13px;border:1.5px solid #ddd;border-radius:12px;font-size:15px;outline:none;transition:var(--tr);}
+    .form-input:focus{border-color:var(--blue);}
+    .photo-upload-area{width:100%;height:80px;border:2px dashed #ddd;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#aaa;font-size:13px;background:#fafafa;gap:4px;}
+    .create-brand-btn{width:100%;padding:15px;background:var(--grad);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:var(--tr);}
+    .create-brand-btn:active{transform:scale(0.98);}
+    .edit-photo-placeholder{width:72px;height:72px;border-radius:16px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:32px;flex-shrink:0;border:2px dashed #ddd;}
+    .settings-row{padding:14px 0;border-bottom:1px solid #f0f0f0;}
+    .settings-label{font-size:13px;font-weight:700;color:#333;margin-bottom:8px;}
+    .settings-input{width:100%;padding:12px;border:1.5px solid #ddd;border-radius:10px;font-size:13px;outline:none;}
+    .settings-desc{font-size:11px;color:#aaa;margin-top:6px;line-height:1.5;}
+    .settings-save-btn{width:100%;padding:14px;background:var(--grad);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;}
+
+    /* 업로드 */
+    .upload-spinner{width:48px;height:48px;border:4px solid #eee;border-top-color:var(--blue);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;}
+
+    /* 이탈 */
+    .exit-modal-inner{background:white;border-radius:20px;padding:28px 24px;max-width:340px;margin:0 auto;margin-top:30vh;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,0.3);animation:fadeScale 0.3s ease;}
+
+    .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,0.8);color:white;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:all 0.3s ease;pointer-events:none;z-index:999;white-space:nowrap;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    @keyframes fadeDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @keyframes fadeScale{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+  </style>
+</head>
+<body>
+
+<!-- ══ 메인 ══ -->
+<div id="screen-main" class="screen active">
+  <div style="position:relative;min-height:100vh;">
+    <button class="main-settings-btn" onclick="openSettings()">⚙️</button>
+    <div class="main-inner">
+      <div class="main-logo-wrap">
+        <img src="./Logo.png" alt="UnionPay" class="main-logo"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <span style="display:none;font-size:36px;font-weight:900;color:var(--blue);letter-spacing:2px;">UPI</span>
+      </div>
+      <div class="main-subtitle">거래 테스트 매니저 v2.0</div>
+      <button class="main-btn main-btn-primary" onclick="goToTestStart()" style="animation-delay:0.15s">🔍 테스트 시작</button>
+      <button class="main-btn main-btn-secondary" onclick="openBrandsScreen()" style="animation-delay:0.25s">🏪 가맹점별 현황</button>
+    </div>
+    <div class="main-version">UPI Test Manager v4.3</div>
+  </div>
+</div>
+
+<!-- ══ 브랜드 선택 ══ -->
+<div id="screen-brand-select" class="screen">
+
+  <!-- 상단: top-bar + 검색바 -->
+  <div style="flex-shrink:0;background:white;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+    <div class="top-bar" style="box-shadow:none;">
+      <button class="back-btn" onclick="goBack()">←</button>
+      <h2>브랜드 선택</h2>
+      <button class="icon-btn" onclick="toggleSearch('select')" id="searchBtn-select" title="검색">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </div>
+    <div class="search-bar-wrap" id="searchWrap-select">
+      <input class="search-input" id="searchInput-select" placeholder="브랜드명 검색..." oninput="filterBrands(this.value,'select')">
+    </div>
+  </div>
+
+  <!-- 중간: 스크롤 목록 -->
+  <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 20px;max-width:480px;width:100%;margin:0 auto;box-sizing:border-box;">
+    <p style="font-size:13px;color:#888;margin-top:4px;margin-bottom:12px;">테스트할 브랜드를 선택하세요.</p>
+    <div class="brand-select-list" id="brandSelectList"></div>
+  </div>
+
+  <!-- 하단: 슬라이드 다음 버튼 (선택 시 올라옴) -->
+  <div class="next-btn-wrap" id="nextBtnWrap">
+    <button id="brandSelectNextBtn"
+      onclick="confirmBrandSelect()"
+      style="width:100%;max-width:440px;display:block;margin:0 auto;padding:16px;background:var(--grad);color:white;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;transition:var(--tr);">
+      다음 →
+    </button>
+  </div>
+
+</div>
+
+<!-- ══ 테스트 입력 ══ -->
+<div id="screen-test" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="confirmGoBack()">←</button>
+    <h2>거래 테스트</h2>
+    <div style="width:36px"></div>
+  </div>
+  <div class="container">
+    <div id="selectedBrandBadge" class="brand-badge" style="display:none">
+      <span id="badgeIcon"></span><span id="badgeName"></span>
+    </div>
+    <div class="store-input-wrap">
+      <label>가맹점명</label>
+      <input type="text" id="storeName" placeholder="테스트 가맹점명 입력">
+    </div>
+    <div class="record-tabs" id="tabContainer">
+      <button class="add-tab-btn" onclick="addNewRecord()">+</button>
+    </div>
+    <div id="testForm">
+      <div class="section-label">카드 구분</div>
+      <div class="button-grid triple">
+        <button class="item-btn cat-btn" onclick="setVal('category','체크카드',this)">체크카드</button>
+        <button class="item-btn cat-btn" onclick="setVal('category','신용카드',this)">신용카드</button>
+        <button class="item-btn cat-btn" onclick="setVal('category','듀얼카드',this)">듀얼카드</button>
+      </div>
+      <div class="section-label">결제 방식</div>
+      <div class="button-grid">
+        <button class="item-btn sub-btn" onclick="handleSubCat('IC 인서트',this)">IC 인서트</button>
+        <button class="item-btn sub-btn" onclick="handleSubCat('실물 NFC',this)">실물 NFC</button>
+        <button class="item-btn sub-btn" onclick="handleSubCat('ApplePay',this)">ApplePay</button>
+        <button class="item-btn sub-btn" onclick="handleSubCat('XiaomiPay',this)">XiaomiPay</button>
+        <button class="item-btn sub-btn" onclick="handleSubCat('HuaweiPay',this)">HuaweiPay</button>
+        <button class="item-btn sub-btn" onclick="handleSubCat('QR CPM',this)">QR CPM</button>
+      </div>
+      <div class="section-label">금액</div>
+      <div class="amount-wrap">
+        <input type="text" id="amountDisplay" placeholder="0" oninput="formatCurrency(this)" inputmode="numeric">
+        <span class="amount-unit">￦</span>
+      </div>
+      <div class="section-label">기능 지원</div>
+      <div class="toggle-grid">
+        <div class="toggle-row"><span class="toggle-label">Hotkey</span><button class="toggle-btn state-na" id="hotkey" onclick="toggleStep('hotkey')">N/A</button></div>
+        <div class="toggle-row"><span class="toggle-label">Brand</span><button class="toggle-btn state-na" id="brandSelection" onclick="toggleStep('brandSelection')">N/A</button></div>
+        <div class="toggle-row"><span class="toggle-label">PIN 출력</span><button class="toggle-btn state-na" id="pinOut" onclick="toggleStep('pinOut')">N/A</button></div>
+        <div class="toggle-row"><span class="toggle-label">PIN 입력</span><button class="toggle-btn state-na" id="pinIn" onclick="toggleStep('pinIn')">N/A</button></div>
+        <div class="toggle-row"><span class="toggle-label">PinByPass</span><button class="toggle-btn state-na" id="pinBypass" onclick="toggleStep('pinBypass')">N/A</button></div>
+        <div class="toggle-row" id="qpsRow"><span class="toggle-label">QPS</span><button class="toggle-btn state-na" id="qpsStatus" onclick="toggleStep('qpsStatus')">N/A</button></div>
+        <div class="toggle-row"><span class="toggle-label">승인 결과</span><button class="toggle-btn state-na" id="status" onclick="toggleStep('status')">N/A</button></div>
+      </div>
+      <div class="section-label">기타사항</div>
+      <textarea id="memo" rows="3" placeholder="메모 입력" oninput="setVal('memo',this.value)"></textarea>
+      <div class="section-label">카드번호 입력</div>
+      <div class="card-panel">
+        <div class="card-row"><span class="card-row-label">실물체크</span><input type="text" id="cc_realCheck" placeholder="카드 번호" oninput="updateCard('realCheck',this.value)"></div>
+        <div class="card-row"><span class="card-row-label">실물신용</span><input type="text" id="cc_realCredit" placeholder="카드 번호" oninput="updateCard('realCredit',this.value)"></div>
+        <div class="card-row"><span class="card-row-label">실물듀얼</span><input type="text" id="cc_realDual" placeholder="카드 번호" oninput="updateCard('realDual',this.value)"></div>
+        <div class="card-row"><span class="card-row-label">애플체크</span><input type="text" id="cc_apple" placeholder="카드 번호" oninput="updateCard('apple',this.value)"></div>
+        <div class="card-row"><span class="card-row-label">샤오미체크</span><input type="text" id="cc_xiaomi" placeholder="카드 번호" oninput="updateCard('xiaomi',this.value)"></div>
+        <div class="card-row"><span class="card-row-label">화웨이체크</span><input type="text" id="cc_huawei" placeholder="카드 번호" oninput="updateCard('huawei',this.value)"></div>
+        <div class="card-row"><span class="card-row-label">QR</span><input type="text" id="cc_qr" placeholder="카드 번호" oninput="updateCard('qr',this.value)"></div>
+      </div>
+      <div class="bottom-bar">
+        <button class="bb-btn bb-summary" onclick="showSummary()">요약 확인</button>
+        <button class="bb-btn bb-upload" onclick="uploadAndSave()">업로드 및 저장</button>
+        <button class="bb-btn bb-excel" onclick="saveExcel()">엑셀 다운</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 가맹점 현황 ══ -->
+<div id="screen-brands" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2>가맹점별 현황</h2>
+    <div style="display:flex;gap:6px;">
+      <button class="icon-btn" onclick="toggleSearch('brands')" id="searchBtn-brands" title="검색">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="icon-btn" onclick="openNewBrand()">＋</button>
+    </div>
+  </div>
+  <div class="search-bar-wrap" id="searchWrap-brands">
+    <input class="search-input" id="searchInput-brands" placeholder="브랜드명 검색..." oninput="filterBrands(this.value,'brands')">
+  </div>
+  <div class="container">
+    <div class="brand-grid" id="brandGrid"></div>
+  </div>
+</div>
+
+<!-- ══ 브랜드 상세 ══ -->
+<div id="screen-brand-detail" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2 id="detailTopTitle">브랜드 상세</h2>
+    <button class="icon-btn" onclick="deleteBrand()">🗑</button>
+  </div>
+  <div class="container" id="detailContainer" style="padding:0 0 40px;"></div>
+</div>
+
+<!-- ══ 요약 모달 ══ -->
+<div id="summaryModal" class="modal-overlay" onclick="closeModal('summaryModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;">테스트 결과 요약</div>
+    <div id="summaryContent"></div>
+    <button onclick="closeModal('summaryModal')" style="width:100%;padding:14px;background:var(--bg);color:var(--blue);border:1.5px solid var(--blue);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;">닫기</button>
+  </div>
+</div>
+
+<!-- ══ 세션 상세/수정 모달 ══ -->
+<div id="sessDetailModal" class="modal-overlay" onclick="closeModal('sessDetailModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <button class="modal-close-btn" onclick="closeModal('sessDetailModal')">✕</button>
+    <div style="font-size:15px;font-weight:800;margin-bottom:2px;padding-right:36px;" id="sessDetailTitle"></div>
+    <div style="font-size:12px;color:#888;margin-bottom:12px;" id="sessDetailSub"></div>
+    <!-- 요약 박스 -->
+    <div id="sessDetailSummary" class="report-box"></div>
+    <!-- 탭 -->
+    <div class="sess-detail-tabs" id="sessDetailTabs"></div>
+    <!-- 건별 상세 (조회/수정 토글) -->
+    <div id="sessDetailRecord" class="report-box" style="border-color:#eee;"></div>
+    <!-- 하단 버튼 -->
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="confirmDeleteSession()" style="flex:1;padding:13px;background:#fff0f0;color:var(--red);border:1.5px solid var(--red);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">전체 삭제</button>
+      <button onclick="saveSessDetail()" style="flex:2;padding:13px;background:var(--grad);color:white;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 통합 지원 현황 직접 수정 모달 ══ -->
+<div id="ovModal" class="modal-overlay" onclick="closeModal('ovModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <button class="modal-close-btn" onclick="closeModal('ovModal')">✕</button>
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px;padding-right:36px;">📋 통합 지원 현황 수정</div>
+    <div style="font-size:12px;color:#888;margin-bottom:16px;">버튼 클릭으로 상태 전환: 🟢지원 / 🔴미지원 / ⬜미테스트</div>
+    <div id="ovContent"></div>
+    <button class="create-brand-btn" style="margin-top:16px;" onclick="saveOverride()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 설정 모달 ══ -->
+<div id="settingsModal" class="modal-overlay" onclick="closeModal('settingsModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:8px;">⚙️ 설정</div>
+    <div class="settings-row">
+      <div class="settings-label">Google Sheets 연동 URL</div>
+      <input class="settings-input" id="sheetsUrlInput" placeholder="https://script.google.com/macros/s/...">
+      <div class="settings-desc">Apps Script 웹앱 배포 후 URL을 입력하세요.</div>
+    </div>
+    <button class="settings-save-btn" onclick="saveSettings()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 브랜드 생성 모달 ══ -->
+<div id="newBrandModal" class="modal-overlay" onclick="closeModal('newBrandModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;">🏪 새 브랜드 추가</div>
+    <div class="form-row">
+      <label class="form-label">브랜드명</label>
+      <input class="form-input" id="newBrandName" placeholder="예: 세븐일레븐">
+    </div>
+    <div class="form-row">
+      <label class="form-label">브랜드 사진 (선택)</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="photo-upload-area" id="photoUploadArea" onclick="document.getElementById('photoInput').click()" style="flex:1;">
+          <span style="font-size:24px;">📷</span><span>사진 선택</span>
+        </div>
+        <img id="photoPreview" style="width:72px;height:72px;border-radius:14px;object-fit:cover;border:2px solid var(--blue);display:none;">
+      </div>
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="previewPhoto(this)">
+    </div>
+    <button class="create-brand-btn" onclick="createBrand()">브랜드 생성</button>
+  </div>
+</div>
+
+<!-- ══ 브랜드 수정 모달 ══ -->
+<div id="editBrandModal" class="modal-overlay" onclick="closeModal('editBrandModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:16px;">✏️ 브랜드 수정</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+      <div id="editPhotoDisplay" class="edit-photo-placeholder">🏪</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <button onclick="document.getElementById('editPhotoInput').click()" style="padding:10px;border:1.5px dashed #ddd;border-radius:10px;background:#fafafa;font-size:13px;cursor:pointer;color:#888;">📷 사진 변경</button>
+        <button onclick="clearEditPhoto()" style="padding:8px;border:none;background:none;font-size:12px;color:#aaa;cursor:pointer;">사진 제거</button>
+      </div>
+      <input type="file" id="editPhotoInput" accept="image/*" style="display:none" onchange="previewEditPhoto(this)">
+    </div>
+    <div class="form-row">
+      <label class="form-label">브랜드명</label>
+      <input class="form-input" id="editBrandName" placeholder="브랜드명 입력">
+    </div>
+    <button class="create-brand-btn" onclick="saveEditBrand()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 특이사항 모달 ══ -->
+<div id="notesModal" class="modal-overlay" onclick="closeModal('notesModal',event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <button class="modal-close-btn" onclick="closeModal('notesModal')">✕</button>
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px;padding-right:36px;">📝 브랜드 특이사항</div>
+    <div style="font-size:12px;color:#888;margin-bottom:14px;">단말기 종류, 핫키 현황 등 자유롭게 입력</div>
+    <textarea id="notesTextarea" rows="7" placeholder="예)&#10;단말기: Verifone VX520&#10;핫키: 입력 불필요&#10;기타 특이사항..."></textarea>
+    <button class="create-brand-btn" style="margin-top:12px;" onclick="saveNotes()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 업로드 모달 ══ -->
+<div id="uploadModal" class="modal-overlay">
+  <div class="modal-sheet" style="border-radius:20px;margin:auto;margin-top:35vh;max-height:none;" onclick="event.stopPropagation()">
+    <div style="text-align:center;padding:20px;" id="uploadModalContent">
+      <div class="upload-spinner"></div>
+      <div style="font-size:15px;font-weight:700;">저장 중...</div>
+      <div style="font-size:13px;color:#888;margin-top:6px;">잠시만 기다려 주세요</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 이탈 경고 모달 ══ -->
+<div id="exitModal" class="modal-overlay" style="background:rgba(0,0,0,0.85);align-items:center;">
+  <div class="exit-modal-inner">
+    <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+    <div style="font-size:17px;font-weight:800;color:var(--dark-red);margin-bottom:8px;">테스트를 종료하시겠습니까?</div>
+    <div style="font-size:13px;color:#666;line-height:1.6;margin-bottom:20px;">저장되지 않은 데이터가 있습니다.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="bb-btn bb-upload" style="padding:14px;" onclick="uploadAndExit()">업로드 후 나가기</button>
+      <button class="bb-btn bb-excel" style="padding:14px;" onclick="excelAndExit()">엑셀 저장 후 나가기</button>
+      <button style="padding:12px;border:none;background:var(--bg);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;color:#555;" onclick="closeModal('exitModal')">계속 작성</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ 상태 ══
+const DEFAULT_SHEETS_URL='https://script.google.com/macros/s/AKfycbydqb_j_hzYQpJPUvn_EsoDqJPeQDewwxbtRM3v45S0w7rwcMgp1s3koEhfdXimh4A7eA/exec';
+let brands=[], settings={sheetsUrl:DEFAULT_SHEETS_URL}, selectedBrandId=null, currentDetailBrandId=null;
+let commonCards={realCheck:'',realCredit:'',realDual:'',apple:'',xiaomi:'',huawei:'',qr:''};
+const initRecord=()=>({category:'',subCategory:'',amount:'',hotkey:'N/A',brandSelection:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qpsStatus:'N/A',status:'N/A',memo:''});
+let records=[initRecord()], currentIdx=0, screenHistory=['main'];
+let newBrandPhotoData=null, editBrandPhotoData=null;
+
+// 세션 상세 모달 상태
+let sdBrandId=null, sdSessionIdx=null, sdRecords=[], sdCurrentIdx=0, sdIsEdit=false;
+
+// 통합 지원 현황 override: {brandId: {"체크카드|IC 인서트":"Y"|"N"|"NA",...}}
+let overrides={};
+
+// ══ 통합 지원 현황 정의 ══
+// 체크/신용: IC인서트·실물NFC·ApplePay·XiaomiPay·HuaweiPay·QR CPM
+// 듀얼: 모든 결제방식
+const CARD_METHODS=['IC 인서트','실물 NFC','ApplePay','XiaomiPay','HuaweiPay','QR CPM'];
+const DUAL_ITEMS=[
+  {cat:'듀얼카드',sub:'IC 인서트',   label:'듀얼 IC 인서트'},
+  {cat:'듀얼카드',sub:'실물 NFC',    label:'듀얼 실물 NFC'},
+  {cat:'듀얼카드',sub:'ApplePay',   label:'듀얼 ApplePay'},
+  {cat:'듀얼카드',sub:'XiaomiPay',  label:'듀얼 XiaomiPay'},
+  {cat:'듀얼카드',sub:'HuaweiPay',  label:'듀얼 HuaweiPay'},
+  {cat:'듀얼카드',sub:'QR CPM',     label:'듀얼 QR CPM'},
+];
+
+// ══ 로컬 설정 ══
+const STORE_KEY = 'upi_acceptance_app_v1';
+
+function loadLocalSettings(){
+  try{
+    const s = localStorage.getItem(STORE_KEY + '_settings'); if(s) settings = JSON.parse(s);
+    if(!settings || !settings.sheetsUrl) settings={sheetsUrl:DEFAULT_SHEETS_URL};
+    // 오버라이드 데이터도 다른 프로젝트와 섞이지 않도록 고유 키를 적용했습니다.
+    const ov = localStorage.getItem(STORE_KEY + '_overrides'); if(ov) overrides = JSON.parse(ov);
+  }catch(e){}
+}
+
+// 앱 시작 처리는 스크립트 하단에서 한 번만 실행합니다.
+
+
+function saveLocalOverrides(){
+  try{
+    localStorage.setItem(STORE_KEY + '_overrides', JSON.stringify(overrides));
+  }catch(e){}
+}
+
+// ... 기존 코드 계속 (saveSettings, sheetsGet 등) ...
+function saveSettings(){
+  settings.sheetsUrl=document.getElementById('sheetsUrlInput').value.trim();
+  try{localStorage.setItem(STORE_KEY + '_settings',JSON.stringify(settings));}catch(e){}
+  closeModal('settingsModal');showToast('✅ 설정이 저장되었습니다.');
+  if(settings.sheetsUrl)loadBrandsFromSheets();
+}
+
+// ══ Sheets API ══
+async function sheetsGet(action,params={}){
+  if(!settings.sheetsUrl)return null;
+  const url=new URL(settings.sheetsUrl);
+  url.searchParams.set('action',action);
+  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+  try{const r=await fetch(url.toString());return await r.json();}catch(e){return null;}
+}
+async function sheetsPost(payload){
+  if(!settings.sheetsUrl)return null;
+  try{const r=await fetch(settings.sheetsUrl,{method:'POST',body:JSON.stringify(payload)});return await r.json();}catch(e){return null;}
+}
+
+// ══ 화면 전환 ══
+function goTo(screen,addHistory=true){
+  const cur=screenHistory[screenHistory.length-1];
+  const el=document.getElementById('screen-'+cur);
+  const next=document.getElementById('screen-'+screen);
+  if(!next)return;
+  el.classList.add('slide-left');
+  setTimeout(()=>el.classList.remove('active','slide-left'),300);
+  next.classList.add('active');
+  if(addHistory)screenHistory.push(screen);
+  window.scrollTo(0,0);
+}
+function goBack(){
+  if(screenHistory.length<=1)return;
+  const cur=screenHistory.pop();
+  const prev=screenHistory[screenHistory.length-1];
+  const el=document.getElementById('screen-'+cur);
+  const prevEl=document.getElementById('screen-'+prev);
+  el.classList.remove('active');el.style.transform='translateX(100%)';
+  setTimeout(()=>el.style.transform='',350);
+  prevEl.classList.remove('slide-left');prevEl.classList.add('active');
+}
+function closeModal(id,e){
+  if(!e||e.target===document.getElementById(id))
+    document.getElementById(id).classList.remove('show');
+}
+
+// ══ 메인 ══
+function goToTestStart(){
+  // 버튼 초기화
+  document.getElementById('nextBtnWrap').classList.remove('visible');
+  selectedBrandId=null;
+  renderBrandSelectList();
+  goTo('brand-select');
+}
+function openBrandsScreen(){renderBrandGrid();goTo('brands');}
+
+// ══ Sheets 로드 ══
+async function loadBrandsFromSheets(){
+  if(!settings.sheetsUrl)return;
+  showToast('⏳ 데이터 불러오는 중...');
+  const result=await sheetsGet('getBrands');
+  if(result&&result.brands){
+    brands=result.brands.map(b=>({...b,sessions:[],notes:b.notes||''}));
+    await Promise.all(brands.map(b=>loadSessionsFromSheets(b.id)));
+    renderBrandGrid();showToast('✅ 데이터 로드 완료');
+  }
+}
+async function loadSessionsFromSheets(brandId){
+  if(!settings.sheetsUrl)return;
+  const result=await sheetsGet('getSessions',{brandId});
+  if(result&&result.sessions){
+    const brand=brands.find(b=>b.id===brandId);
+    if(brand)brand.sessions=result.sessions;
+  }
+}
+
+// ══ 브랜드 선택 ══
+function renderBrandSelectList(){
+  const list=document.getElementById('brandSelectList');
+  if(!brands.length){
+    list.innerHTML=`<div style="text-align:center;padding:40px 20px;color:#aaa;"><div style="font-size:40px;margin-bottom:10px;">🏪</div><div style="font-size:14px;">등록된 브랜드가 없습니다.</div></div>`;
+    document.getElementById('brandSelectNextBtn').disabled=true;return;
+  }
+  list.innerHTML=brands.map(b=>`
+    <div class="brand-select-card ${selectedBrandId===b.id?'selected':''}" onclick="selectBrand('${b.id}')">
+      <div class="brand-thumb">${b.photo?`<img src="${b.photo}">`:(b.icon||'🏪')}</div>
+      <div><div class="brand-select-name">${b.name}</div><div class="brand-select-meta">${b.sessions.length}회 테스트 기록</div></div>
+      <div class="brand-select-check">✓</div>
+    </div>`).join('');
+}
+function selectBrand(id){
+  selectedBrandId = id;
+  // 검색어 유지하며 재렌더
+  const q = (document.getElementById('searchInput-select')?.value||'').trim().toLowerCase();
+  const list = q ? brands.filter(b=>b.name.toLowerCase().includes(q)) : brands;
+  renderBrandSelectListFiltered(list);
+  // 버튼 슬라이드 업
+  document.getElementById('nextBtnWrap').classList.add('visible');
+}
+function confirmBrandSelect(){
+  if(!selectedBrandId)return;
+  const brand=brands.find(b=>b.id===selectedBrandId);
+  document.getElementById('selectedBrandBadge').style.display='inline-flex';
+  document.getElementById('badgeIcon').textContent=brand.photo?'🏪':(brand.icon||'🏪');
+  document.getElementById('badgeName').textContent=brand.name;
+  records=[initRecord()];currentIdx=0;
+  commonCards={realCheck:'',realCredit:'',realDual:'',apple:'',xiaomi:'',huawei:'',qr:''};
+  document.getElementById('storeName').value='';
+  ['realCheck','realCredit','realDual','apple','xiaomi','huawei','qr'].forEach(k=>{const el=document.getElementById('cc_'+k);if(el)el.value='';});
+  updateUI();goTo('test');
+}
+
+// ══ 테스트 로직 ══
+function getAmountType(amtStr,sub){const v=parseInt((amtStr||'').replace(/[^0-9]/g,''))||0;return v>=(sub==='QR CPM'?70000:50000)?'고액':'소액';}
+function getAssignedCard(cat,sub){
+  if(!cat||!sub)return '미지정';
+  if(sub==='QR CPM')return commonCards.qr||'미지정';
+  if(cat==='듀얼카드')return commonCards.realDual||'미지정';
+  if(sub==='ApplePay')return commonCards.apple||'미지정';
+  if(sub==='XiaomiPay')return commonCards.xiaomi||'미지정';
+  if(sub==='HuaweiPay')return commonCards.huawei||'미지정';
+  if(cat==='체크카드')return commonCards.realCheck||'미지정';
+  if(cat==='신용카드')return commonCards.realCredit||'미지정';
+  return '미지정';
+}
+function updateCard(key,val){commonCards[key]=val;}
+function formatCurrency(el){
+  const v=el.value.replace(/[^0-9]/g,'');
+  if(v){el.value=parseInt(v).toLocaleString('ko-KR');records[currentIdx].amount='￦'+el.value;}
+  else{el.value='';records[currentIdx].amount='';}
+}
+function renderTabs(){
+  const c=document.getElementById('tabContainer');
+  const addBtn=c.querySelector('.add-tab-btn');
+  c.querySelectorAll('.tab-btn').forEach(t=>t.remove());
+  records.forEach((_,i)=>{
+    const btn=document.createElement('button');
+    btn.className=`tab-btn ${i===currentIdx?'active':''}`;
+    btn.textContent=i+1;btn.onclick=()=>{currentIdx=i;updateUI();};
+    c.insertBefore(btn,addBtn);
+  });
+}
+function addNewRecord(){records.push(initRecord());currentIdx=records.length-1;updateUI();}
+function setVal(key,val,el){
+  records[currentIdx][key]=val;
+  if(el){el.closest('.button-grid').querySelectorAll('.item-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
+}
+function handleSubCat(val,el){setVal('subCategory',val,el);if(val==='IC 인서트')records[currentIdx].qpsStatus='N/A';updateUI();}
+function toggleStep(id){const s=['N/A','Y','N'];records[currentIdx][id]=s[(s.indexOf(records[currentIdx][id])+1)%3];updateUI();}
+function updateUI(){
+  renderTabs();
+  const r=records[currentIdx];
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('selected',b.textContent===r.category));
+  document.querySelectorAll('.sub-btn').forEach(b=>b.classList.toggle('selected',b.textContent===r.subCategory));
+  document.getElementById('amountDisplay').value=(r.amount||'').replace('￦','').replace(/[^0-9,]/g,'');
+  document.getElementById('memo').value=r.memo||'';
+  document.getElementById('qpsRow').style.display=r.subCategory==='IC 인서트'?'none':'flex';
+  ['hotkey','brandSelection','pinOut','pinIn','pinBypass','qpsStatus','status'].forEach(id=>{
+    const btn=document.getElementById(id);btn.textContent=r[id];
+    btn.className='toggle-btn '+(r[id]==='Y'?'state-y':r[id]==='N'?'state-n':'state-na');
+  });
+}
+
+// ══ 요약 (테스트 화면용) ══
+function getSummaryStatus(key,recs){recs=recs||records;if(recs.some(r=>r[key]==='Y'))return 'O';if(recs.some(r=>r[key]==='N'))return 'X';return '-';}
+function buildSummaryHTML(recs,storeName){
+  const sl=recs.filter(r=>r.status==='Y').map(r=>`${r.category.substring(0,2)} ${r.subCategory} ${getAmountType(r.amount,r.subCategory)}`);
+  const fl=recs.filter(r=>r.status==='N').map(r=>`${r.category.substring(0,2)} ${r.subCategory} ${getAmountType(r.amount,r.subCategory)}`);
+  const f=v=>v==='Y'?'O':v==='N'?'X':'-';
+  return `<div class="report-box">
+    <div class="report-title">📋 요약 — ${storeName||'미지정'}</div>
+    <div class="summary-row"><span><span class="status-tag tag-success">성공</span></span><span style="font-size:12px;">${sl.join(', ')||'없음'}</span></div>
+    <div class="summary-row"><span><span class="status-tag tag-fail">실패</span></span><span style="font-size:12px;">${fl.join(', ')||'없음'}</span></div>
+        <div style="font-size:11px;color:#888;margin-top:10px;padding-top:10px;border-top:1px dashed #ddd;">
+      Hotkey:${f(getSummaryStatus('hotkey',recs))} / Brand:${f(getSummaryStatus('brandSelection',recs))} / PIN출력:${f(getSummaryStatus('pinOut',recs))} / PIN입력:${f(getSummaryStatus('pinIn',recs))} / PBP:${f(getSummaryStatus('pinBypass',recs))} / QPS:${f(getSummaryStatus('qpsStatus',recs))}
+    </div>
+  </div>`;
+}
+function buildRecordDetailHTML(r, editable=false){
+  const st = r.status==='Y' ? '<span class="status-tag tag-success">성공</span>'
+           : r.status==='N' ? '<span class="status-tag tag-fail">실패</span>'
+           : '<span class="status-tag" style="background:#ccc">N/A</span>';
+  const f = v => v==='Y'?'O' : v==='N'?'X' : '-';
+
+  if(!editable){
+    return `
+      <div class="summary-row"><b>카드 / 방식</b><span>${r.category||'-'} / ${r.subCategory||'-'}</span></div>
+      <div class="summary-row"><b>금액 / 결과</b><span>${r.amount||'￦0'} (${getAmountType(r.amount,r.subCategory)}) ${st}</span></div>
+      <div class="summary-row" style="border:none;font-size:11px;color:#666;">
+        <b>기능지원</b>
+        <span>Hotkey:${f(r.hotkey)} Brand:${f(r.brandSelection)}<br>PIN출력:${f(r.pinOut)} PIN입력:${f(r.pinIn)} PBP:${f(r.pinBypass)} QPS:${f(r.qpsStatus)}</span>
+      </div>
+      ${r.memo?`<div style="font-size:12px;color:#888;padding-top:8px;"><b>Memo:</b> ${r.memo}</div>`:''}`;
+  }
+
+  // 수정 모드
+  const cats=['체크카드','신용카드','듀얼카드'];
+  const subs=['IC 인서트','실물 NFC','ApplePay','XiaomiPay','HuaweiPay','QR CPM'];
+  const tog=(key,label)=>{
+    const cur=r[key]||'N/A';
+    const cls=cur==='Y'?'state-y':cur==='N'?'state-n':'state-na';
+    return `<div class="toggle-row" style="margin-bottom:6px;">
+      <span class="toggle-label" style="font-size:12px;">${label}</span>
+      <button class="toggle-btn ${cls}" onclick="cycleSdField('${key}',this)">${cur}</button>
+    </div>`;
+  };
+  return `
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">카드 구분</div>
+      <div class="button-grid triple" style="margin-bottom:0;">
+        ${cats.map(c=>`<button class="item-btn ${r.category===c?'selected':''}" onclick="setSdField('category','${c}',this)">${c}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">결제 방식</div>
+      <div class="button-grid" style="margin-bottom:0;">
+        ${subs.map(s=>`<button class="item-btn ${r.subCategory===s?'selected':''}" onclick="setSdField('subCategory','${s}',this)">${s}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">금액</div>
+      <div class="amount-wrap">
+        <input type="text" id="sd_amount" value="${(r.amount||'').replace('￦','').replace(/[^0-9,]/g,'')}"
+          oninput="setSdAmount(this)" inputmode="numeric"
+          style="width:100%;padding:10px 36px 10px 12px;border:none;outline:none;font-size:15px;font-weight:700;background:transparent;">
+        <span class="amount-unit" style="font-size:14px;">￦</span>
+      </div>
+    </div>
+    <div style="margin-bottom:6px;">
+      ${tog('hotkey','Hotkey')}
+      ${tog('brandSelection','Brand')}
+      ${tog('pinOut','PIN 출력')}
+      ${tog('pinIn','PIN 입력')}
+      ${tog('pinBypass','PinByPass')}
+      ${r.subCategory!=='IC 인서트'?tog('qpsStatus','QPS'):''}
+      ${tog('status','승인 결과')}
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">메모</div>
+      <textarea rows="2" style="margin:0;font-size:13px;" oninput="sdRecords[sdCurrentIdx].memo=this.value">${r.memo||''}</textarea>
+    </div>`;
+}
+
+function showSummary(){
+  document.getElementById('summaryContent').innerHTML=
+    buildSummaryHTML(records,document.getElementById('storeName').value)+
+    `<div style="font-size:13px;font-weight:700;color:#555;margin-bottom:8px;">건별 상세</div>
+    <div class="summary-tab-list" id="sumTabList"></div>
+    <div id="sumDetail" class="report-box" style="border-color:#eee;"></div>`;
+  records.forEach((_,i)=>{
+    const btn=document.createElement('button');btn.className='tab-btn';btn.textContent=i+1;
+    btn.onclick=()=>updateSumDetail(i);
+    document.getElementById('sumTabList').appendChild(btn);
+  });
+  updateSumDetail(0);
+  document.getElementById('summaryModal').classList.add('show');
+}
+function updateSumDetail(idx){
+  document.querySelectorAll('#sumTabList .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.getElementById('sumDetail').innerHTML=buildRecordDetailHTML(records[idx],false);
+}
+
+// ══ 엑셀 ══
+function saveExcel(){
+  const sn=document.getElementById('storeName').value||'테스트';
+  const cardTypeEn=c=>c==='체크카드'?'Debit':c==='신용카드'?'Credit':c==='듀얼카드'?'Dual':c;
+  const na=v=>(!v||v==='N/A')?'':v;
+  const headers=["Number","Date","Merchant","CardNumber","CardType","Transaction Amount","Transaction Type","Hotkey","Brand Selection","PIN출력","PIN입력","PIN Bypass","QPS","Successful/Failed","Memo"];
+  const dataRows=records.map((r,i)=>[
+    i+1, new Date().toISOString().split('T')[0], sn,
+    getAssignedCard(r.category,r.subCategory),
+    cardTypeEn(r.category), r.amount, r.subCategory,
+    na(r.hotkey), na(r.brandSelection), na(r.pinOut), na(r.pinIn),
+    na(r.pinBypass), na(r.qpsStatus), na(r.status), r.memo
+  ]);
+  const ws=XLSX.utils.aoa_to_sheet([headers,...dataRows]);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'UPI_Report');
+  XLSX.writeFile(wb,`${sn}_UPI_Report.xlsx`);
+  showToast('📥 엑셀 파일이 저장되었습니다.');
+}
+
+// ══ 업로드 ══
+let isBusy=false;
+async function uploadAndSave(){
+  if(isBusy)return;
+  const sn=document.getElementById('storeName').value;
+  if(!sn){showToast('⚠️ 가맹점명을 입력해주세요.');return;}
+  if(!selectedBrandId){showToast('⚠️ 브랜드를 선택해주세요.');return;}
+  if(!settings.sheetsUrl){showToast('⚠️ 설정에서 Sheets URL을 먼저 입력해주세요.');return;}
+  isBusy=true;
+  showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
+  const brand=brands.find(b=>b.id===selectedBrandId);
+  // 카드번호 + 모든 필드 명시적으로 포함
+  const enriched = records.map(r => ({
+    category       : r.category       || '',
+    subCategory    : r.subCategory    || '',
+    amount         : r.amount         || '',
+    hotkey         : r.hotkey         || 'N/A',
+    brandSelection : r.brandSelection || 'N/A',
+    pinOut         : r.pinOut         || 'N/A',
+    pinIn          : r.pinIn          || 'N/A',
+    pinBypass      : r.pinBypass      || 'N/A',
+    qpsStatus      : r.qpsStatus      || 'N/A',
+    status         : r.status         || 'N/A',
+    memo           : r.memo           || '',
+    cardNumber     : getAssignedCard(r.category, r.subCategory)
+  }));
+  // ── 진단용 로그 ──
+  console.log('[enriched 전송 데이터]', JSON.stringify(enriched, null, 2));
+  const payload={action:'saveSession',brandId:selectedBrandId,brandName:brand?.name||'',date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
+  const result=await sheetsPost(payload);
+  isBusy=false;
+  // 세션 저장 시 sessionId도 로컬에 보관
+  if(result&&result.ok){
+    if(brand)brand.sessions.push({sessionId:result.sessionId, date:payload.date,storeName:sn,records:enriched});
+    showUploadModal('success','저장 완료!','Google Sheets에 저장되었습니다.');
+    setTimeout(()=>hideUploadModal(),1800);
+  }else{hideUploadModal();showToast('❌ 저장 실패. URL 설정을 확인해주세요.');}
+}
+function showUploadModal(state,title,sub){
+  document.getElementById('uploadModal').classList.add('show');
+  document.getElementById('uploadModalContent').innerHTML=state==='loading'
+    ?`<div class="upload-spinner"></div><div style="font-size:15px;font-weight:700;">${title||'처리 중...'}</div><div style="font-size:13px;color:#888;margin-top:6px;">${sub||'잠시만 기다려 주세요'}</div>`
+    :`<div style="font-size:48px;margin-bottom:12px;">✅</div><div style="font-size:15px;font-weight:700;">${title||'완료!'}</div><div style="font-size:13px;color:#888;margin-top:6px;">${sub||''}</div>`;
+}
+function hideUploadModal(){document.getElementById('uploadModal').classList.remove('show');}
+
+// ══ 이탈 (테스트 화면 뒤로가기) ══
+function confirmGoBack(){
+  if(records.some(r=>r.category||r.amount||r.subCategory)){
+    if(!confirm('저장을 완료한 후 테스트를 종료해 주세요.\n그래도 나가시겠습니까?'))return;
+  }
+  goBack();goBack(); // brand-select → main
+}
+
+// ══ 검색 ══
+let searchOpen = { brands: false, select: false };
+
+function toggleSearch(ctx) {
+  searchOpen[ctx] = !searchOpen[ctx];
+  const wrap  = document.getElementById('searchWrap-' + ctx);
+  const input = document.getElementById('searchInput-' + ctx);
+  wrap.classList.toggle('open', searchOpen[ctx]);
+  if (searchOpen[ctx]) {
+    input.value = '';
+    filterBrands('', ctx);
+    setTimeout(() => input.focus(), 120);
+  } else {
+    filterBrands('', ctx); // 검색 닫으면 전체 복원
+  }
+}
+
+function filterBrands(keyword, ctx) {
+  const q = keyword.trim().toLowerCase();
+  if (ctx === 'brands') {
+    // 가맹점 현황 필터
+    const filtered = q ? brands.filter(b => b.name.toLowerCase().includes(q)) : brands;
+    renderBrandGridFiltered(filtered);
+  } else {
+    // 브랜드 선택 필터
+    const filtered = q ? brands.filter(b => b.name.toLowerCase().includes(q)) : brands;
+    renderBrandSelectListFiltered(filtered);
+  }
+}
+
+function renderBrandGridFiltered(list) {
+  const grid = document.getElementById('brandGrid');
+  if (!list.length) {
+    grid.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#aaa;"><div style="font-size:32px;margin-bottom:10px;">🔍</div><div style="font-size:14px;">검색 결과가 없습니다.</div></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(b => {
+    const allR = b.sessions.flatMap(s => s.records);
+    const ov   = overrides[b.id] || {};
+    const supported = new Set(), failed = new Set();
+    allR.forEach(r => {
+      const key = `${r.category}|${r.subCategory}`;
+      if (!ov[key]) { if (r.status==='Y') supported.add(key); else if (r.status==='N') failed.add(key); }
+    });
+    Object.entries(ov).forEach(([k,v]) => {
+      if (k.startsWith('feature|')) return;
+      supported.delete(k); failed.delete(k);
+      if (v==='Y') supported.add(k); else if (v==='N') failed.add(k);
+    });
+    const toLabel = key => { const [cat,sub]=key.split('|'); return `${cat.substring(0,2)} ${sub}`; };
+    return `<div class="brand-card" onclick="openBrandDetail('${b.id}')">
+      <div class="brand-card-header">
+        <div class="brand-icon">${b.photo?`<img src="${b.photo}">`:(b.icon||'🏪')}</div>
+        <div><div class="brand-name">${b.name}</div><div class="brand-meta">총 ${b.sessions.length}회 테스트 · ${allR.length}건 거래</div></div>
+      </div>
+      <div class="brand-chips">
+        ${[...supported].map(k=>`<span class="chip success">✅ ${toLabel(k)}</span>`).join('')}
+        ${[...failed].map(k=>`<span class="chip fail">❌ ${toLabel(k)}</span>`).join('')}
+        ${!supported.size&&!failed.size?'<span class="chip neutral">기록 없음</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBrandSelectListFiltered(list) {
+  const el = document.getElementById('brandSelectList');
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:#aaa;"><div style="font-size:32px;margin-bottom:10px;">🔍</div><div style="font-size:14px;">검색 결과가 없습니다.</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(b => `
+    <div class="brand-select-card ${selectedBrandId===b.id?'selected':''}" onclick="selectBrand('${b.id}')">
+      <div class="brand-thumb">${b.photo?`<img src="${b.photo}">`:(b.icon||'🏪')}</div>
+      <div><div class="brand-select-name">${b.name}</div><div class="brand-select-meta">${b.sessions.length}회 테스트 기록</div></div>
+      <div class="brand-select-check">✓</div>
+    </div>`).join('');
+}
+function getEffectiveStatus(brandId,cat,sub){
+  const key=`${cat}|${sub}`;
+  const ov=(overrides[brandId]||{})[key];
+  if(ov)return ov; // 'Y','N','NA'
+  return null; // 기록 기반
+}
+function renderBrandGrid(){
+  const grid=document.getElementById('brandGrid');
+  if(!brands.length){
+    grid.innerHTML=`<div style="text-align:center;padding:60px 20px;color:#aaa;"><div style="font-size:48px;margin-bottom:12px;">🏪</div><div style="font-size:14px;">등록된 브랜드가 없습니다.</div></div>`;
+    return;
+  }
+  grid.innerHTML=brands.map(b=>{
+    const allR=b.sessions.flatMap(s=>s.records);
+    const ov=overrides[b.id]||{};
+    // 지원 항목 계산 (override 우선)
+    const supported=new Set(),failed=new Set();
+    // 기록 기반 먼저
+    allR.forEach(r=>{
+      const key=`${r.category}|${r.subCategory}`;
+      if(!ov[key]){if(r.status==='Y')supported.add(key);else if(r.status==='N')failed.add(key);}
+    });
+    // override 적용
+    Object.entries(ov).forEach(([k,v])=>{
+      supported.delete(k);failed.delete(k);
+      if(v==='Y')supported.add(k);else if(v==='N')failed.add(k);
+    });
+    const toLabel=key=>{const[cat,sub]=key.split('|');return `${cat.substring(0,2)} ${sub}`;};
+    return `<div class="brand-card" onclick="openBrandDetail('${b.id}')">
+      <div class="brand-card-header">
+        <div class="brand-icon">${b.photo?`<img src="${b.photo}">`:(b.icon||'🏪')}</div>
+        <div><div class="brand-name">${b.name}</div><div class="brand-meta">총 ${b.sessions.length}회 테스트 · ${allR.length}건 거래</div></div>
+      </div>
+      <div class="brand-chips">
+        ${[...supported].map(k=>`<span class="chip success">✅ ${toLabel(k)}</span>`).join('')}
+        ${[...failed].map(k=>`<span class="chip fail">❌ ${toLabel(k)}</span>`).join('')}
+        ${!supported.size&&!failed.size?'<span class="chip neutral">기록 없음</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ 브랜드 상세 ══
+async function openBrandDetail(id){
+  currentDetailBrandId=id;
+  const brand=brands.find(b=>b.id===id);
+  document.getElementById('detailTopTitle').textContent=brand.name;
+  document.getElementById('detailContainer').innerHTML=`<div style="text-align:center;padding:60px 20px;color:#aaa;"><div style="font-size:32px;margin-bottom:12px;">⏳</div><div>데이터 불러오는 중...</div></div>`;
+  goTo('brand-detail');
+  await loadSessionsFromSheets(id);
+  renderBrandDetail(id);
+}
+
+// 통합 지원 현황 테이블 빌드
+const FEATURE_KEYS=[
+  {key:'hotkey',       label:'Hotkey'},
+  {key:'brandSelection',label:'Brand Selection'},
+  {key:'pinOut',       label:'PIN 출력'},
+  {key:'pinBypass',    label:'PinByPass (PBP)'},
+  {key:'qpsStatus',    label:'QPS'},
+];
+
+function buildSupportTable(brandId,allRecords){
+  const ov=overrides[brandId]||{};
+
+  // ── 카드×결제방식 상태 ──
+  function getStatus(cat,sub){
+    const key=`${cat}|${sub}`;
+    if(ov[key])return ov[key];
+    const rel=allRecords.filter(r=>r.category===cat&&r.subCategory===sub);
+    if(rel.some(r=>r.status==='Y'))return 'Y';
+    if(rel.some(r=>r.status==='N'))return 'N';
+    return null;
+  }
+  function chips(cat,methods){
+    const cs=[];
+    methods.forEach(sub=>{
+      const st=getStatus(cat,sub);
+      const label=`${cat==='체크카드'?'체크':cat==='신용카드'?'신용':'듀얼'} ${sub}`;
+      if(st==='Y')cs.push(`<span class="method-chip mc-y">● ${label}</span>`);
+      else if(st==='N')cs.push(`<span class="method-chip mc-n">● ${label}</span>`);
+    });
+    return cs.length?`<div class="method-chips">${cs.join('')}</div>`:`<span style="color:#ccc;font-size:12px;">-</span>`;
+  }
+  function dualChips(){
+    const cs=[];
+    DUAL_ITEMS.forEach(({cat,sub,label})=>{
+      const st=getStatus(cat,sub);
+      if(st==='Y')cs.push(`<span class="method-chip mc-y">● ${label}</span>`);
+      else if(st==='N')cs.push(`<span class="method-chip mc-n">● ${label}</span>`);
+    });
+    return cs.length?`<div class="method-chips">${cs.join('')}</div>`:`<span style="color:#ccc;font-size:12px;">-</span>`;
+  }
+
+  // ── 기능 지원 상태 ──
+  function getFeatureStatus(key){
+    const ovKey=`feature|${key}`;
+    if(ov[ovKey])return ov[ovKey];
+    if(allRecords.some(r=>r[key]==='Y'))return 'Y';
+    if(allRecords.some(r=>r[key]==='N'))return 'N';
+    return null;
+  }
+  const featureRows=FEATURE_KEYS.map(({key,label})=>{
+    const st=getFeatureStatus(key);
+    const chip=st==='Y'?`<span class="method-chip mc-y">● 지원</span>`:
+               st==='N'?`<span class="method-chip mc-n">● 미지원</span>`:
+               `<span style="color:#ccc;font-size:12px;">-</span>`;
+    return `<tr><td class="card-label" style="font-size:12px;">${label}</td><td>${chip}</td></tr>`;
+  }).join('');
+
+  return `<div class="support-table-wrap">
+    <table class="support-table">
+      <thead><tr><th style="width:52px;">카드</th><th>결제 방식</th></tr></thead>
+      <tbody>
+        <tr><td class="card-label">체크</td><td>${chips('체크카드',CARD_METHODS)}</td></tr>
+        <tr><td class="card-label">신용</td><td>${chips('신용카드',CARD_METHODS)}</td></tr>
+        <tr><td class="card-label">듀얼</td><td>${dualChips()}</td></tr>
+      </tbody>
+    </table>
+    <table class="support-table" style="margin-top:8px;">
+      <thead><tr><th colspan="2">기능 지원</th></tr></thead>
+      <tbody>${featureRows}</tbody>
+    </table>
+    <button class="edit-support-btn" onclick="openOverrideModal('${brandId}')">✏️ 현황 직접 수정</button>
+  </div>`;
+}
+
+function renderBrandDetail(id){
+  const brand=brands.find(b=>b.id===id);
+  const allR=brand.sessions.flatMap(s=>s.records);
+  const notes=brand.notes||'';
+  const sessionsHTML=brand.sessions.slice().reverse().map((session,revIdx)=>{
+    const realIdx=brand.sessions.length-1-revIdx;
+    const dateLabel=(session.date||'').includes('T')?session.date.split('T')[0]:session.date;
+    const preview=session.records.slice(0,3).map(r=>{
+      const dot=r.status==='Y'?'dot-y':r.status==='N'?'dot-n':'dot-na';
+      return `<div class="session-preview-row"><span class="result-dot ${dot}"></span>${r.category||'-'} / ${r.subCategory||'-'} · ${r.amount||'￦0'}</div>`;
+    }).join('');
+    const more=session.records.length>3?`<div style="font-size:11px;color:#aaa;padding:3px 0;">외 ${session.records.length-3}건...</div>`:'';
+    return `<div class="session-block" onclick="openSessDetail('${id}',${realIdx})">
+      <div class="session-block-header">
+        <div><div class="session-block-date">📅 ${dateLabel}</div><div class="session-block-store">${session.storeName} · ${session.records.length}건</div></div>
+        <span style="font-size:20px;color:#bbb;">›</span>
+      </div>
+      <div class="session-block-preview">${preview}${more}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('detailContainer').innerHTML=`
+    <div class="detail-hero">
+      <div class="detail-hero-icon">${brand.photo?`<img src="${brand.photo}">`:(brand.icon||'🏪')}</div>
+      <div><div class="detail-hero-name">${brand.name}</div><div class="detail-hero-meta">${brand.sessions.length}회 테스트 · ${allR.length}건 거래</div></div>
+      <button class="hero-edit-btn" onclick="openEditBrand('${id}')">✏️</button>
+    </div>
+    <div style="padding:0 20px;">
+      <div class="section-label" style="margin-top:20px;">통합 지원 현황</div>
+      ${buildSupportTable(id,allR)}
+      <div class="section-label" style="margin-top:20px;">브랜드 특이사항</div>
+      <div class="notes-box">
+        <div class="notes-view ${notes?'':'empty'}">${notes||'단말기 종류, 핫키 현황 등 특이사항을 입력하세요.'}</div>
+        <button class="notes-edit-btn" onclick="openNotes('${id}')">✏️ 수정</button>
+      </div>
+      <div class="section-label" style="margin-top:20px;">날짜별 테스트 이력</div>
+      ${sessionsHTML||'<div style="text-align:center;color:#aaa;padding:20px;">저장된 세션이 없습니다.</div>'}
+    </div>`;
+}
+
+// ══ 통합 지원 현황 직접 수정 모달 ══
+let ovBrandId=null, ovTemp={};
+function openOverrideModal(brandId){
+  ovBrandId=brandId;
+  const brand=brands.find(b=>b.id===brandId);
+  const allR=brand.sessions.flatMap(s=>s.records);
+  const ov=overrides[brandId]||{};
+  ovTemp=JSON.parse(JSON.stringify(ov));
+
+  function getStatus(cat,sub){
+    const key=`${cat}|${sub}`;
+    if(ovTemp[key])return ovTemp[key];
+    const rel=allR.filter(r=>r.category===cat&&r.subCategory===sub);
+    if(rel.some(r=>r.status==='Y'))return 'Y';
+    if(rel.some(r=>r.status==='N'))return 'N';
+    return 'NA';
+  }
+  function safeId(cat,sub){return 'ovb_'+`${cat}_${sub}`.replace(/[^a-zA-Z0-9]/g,'_');}
+  function makeBtn(cat,sub,label){
+    const st=getStatus(cat,sub);
+    const cls=st==='Y'?'ov-btn ov-y':st==='N'?'ov-btn ov-n':'ov-btn ov-na';
+    const icon=st==='Y'?'🟢':st==='N'?'🔴':'⬜';
+    return `<button class="${cls}" id="${safeId(cat,sub)}" onclick="cycleOvBtn('${cat}','${sub}',this)">${icon} ${label}</button>`;
+  }
+  const chkBtns=CARD_METHODS.map(s=>makeBtn('체크카드',s,`체크 ${s}`)).join('');
+  const credBtns=CARD_METHODS.map(s=>makeBtn('신용카드',s,`신용 ${s}`)).join('');
+  const dualBtns=DUAL_ITEMS.map(({cat,sub,label})=>makeBtn(cat,sub,label)).join('');
+
+  // 기능 지원 버튼
+  function makeFeatureBtn(key,label){
+    const ovKey=`feature|${key}`;
+    const st=ovTemp[ovKey]||(()=>{
+      if(allR.some(r=>r[key]==='Y'))return 'Y';
+      if(allR.some(r=>r[key]==='N'))return 'N';
+      return 'NA';
+    })();
+    const cls=st==='Y'?'ov-btn ov-y':st==='N'?'ov-btn ov-n':'ov-btn ov-na';
+    const icon=st==='Y'?'🟢':st==='N'?'🔴':'⬜';
+    const sid='ovb_feat_'+key;
+    return `<button class="${cls}" id="${sid}" onclick="cycleFeatureBtn('${key}',this)">${icon} ${label}</button>`;
+  }
+  const featBtns=FEATURE_KEYS.map(({key,label})=>makeFeatureBtn(key,label)).join('');
+
+  document.getElementById('ovContent').innerHTML=`
+    <div class="ov-grid">
+      <div><div class="ov-group-label">체크카드</div><div class="ov-btns">${chkBtns}</div></div>
+      <div><div class="ov-group-label">신용카드</div><div class="ov-btns">${credBtns}</div></div>
+      <div><div class="ov-group-label">듀얼카드</div><div class="ov-btns">${dualBtns}</div></div>
+      <div><div class="ov-group-label">기능 지원</div><div class="ov-btns">${featBtns}</div></div>
+    </div>`;
+  document.getElementById('ovModal').classList.add('show');
+}
+function cycleOvBtn(cat,sub,btn){
+  const key=`${cat}|${sub}`;
+  const cur=ovTemp[key]||'NA';
+  const next=cur==='Y'?'N':cur==='N'?'NA':'Y';
+  ovTemp[key]=next;
+  const label=DUAL_ITEMS.find(o=>o.cat===cat&&o.sub===sub)?.label||`${cat==='체크카드'?'체크':'신용'} ${sub}`;
+  btn.className=next==='Y'?'ov-btn ov-y':next==='N'?'ov-btn ov-n':'ov-btn ov-na';
+  btn.innerHTML=(next==='Y'?'🟢':next==='N'?'🔴':'⬜')+' '+label;
+}
+function cycleFeatureBtn(key,btn){
+  const ovKey=`feature|${key}`;
+  const cur=ovTemp[ovKey]||'NA';
+  const next=cur==='Y'?'N':cur==='N'?'NA':'Y';
+  ovTemp[ovKey]=next;
+  const label=FEATURE_KEYS.find(f=>f.key===key)?.label||key;
+  btn.className=next==='Y'?'ov-btn ov-y':next==='N'?'ov-btn ov-n':'ov-btn ov-na';
+  btn.innerHTML=(next==='Y'?'🟢':next==='N'?'🔴':'⬜')+' '+label;
+}
+function saveOverride(){
+  if(!overrides[ovBrandId])overrides[ovBrandId]={};
+  overrides[ovBrandId]=JSON.parse(JSON.stringify(ovTemp));
+  saveLocalOverrides();
+  closeModal('ovModal');
+  renderBrandDetail(ovBrandId);
+  renderBrandGrid();
+  showToast('✅ 지원 현황이 수정되었습니다.');
+}
+
+// ══ 세션 상세/수정 모달 ══
+function openSessDetail(brandId,sessionIdx){
+  sdBrandId=brandId;sdSessionIdx=sessionIdx;sdIsEdit=false;
+  const brand=brands.find(b=>b.id===brandId);
+  const session=brand.sessions[sessionIdx];
+  sdRecords=JSON.parse(JSON.stringify(session.records));
+  sdCurrentIdx=0;
+  const dateLabel=(session.date||'').includes('T')?session.date.split('T')[0]:session.date;
+  document.getElementById('sessDetailTitle').textContent=`📅 ${dateLabel}`;
+  document.getElementById('sessDetailSub').textContent=`${session.storeName} · ${session.records.length}건`;
+  renderSessDetail();
+  document.getElementById('sessDetailModal').classList.add('show');
+}
+
+function renderSessDetail(){
+  // 요약
+  document.getElementById('sessDetailSummary').innerHTML=buildSummaryHTML(sdRecords,'').replace('<div class="report-title">📋 요약 — 미지정</div>','<div class="report-title">📋 전체 요약</div>');
+  // 탭
+  const tabList=document.getElementById('sessDetailTabs');
+  tabList.innerHTML='';
+  sdRecords.forEach((_,i)=>{
+    const btn=document.createElement('button');btn.className=`tab-btn ${i===sdCurrentIdx?'active':''}`;
+    btn.textContent=i+1;btn.onclick=()=>{sdCurrentIdx=i;renderSessDetailRecord();};
+    tabList.appendChild(btn);
+  });
+  renderSessDetailRecord();
+}
+
+function renderSessDetailRecord(){
+  document.querySelectorAll('#sessDetailTabs .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===sdCurrentIdx));
+  const r=sdRecords[sdCurrentIdx];
+  document.getElementById('sessDetailRecord').innerHTML=sdIsEdit
+    ?buildRecordDetailHTML(r,true)
+    :buildRecordDetailHTML(r,false);
+  // 수정 모드 토글 버튼 주입
+  const box=document.getElementById('sessDetailRecord');
+  const toggleBtn=document.createElement('button');
+  toggleBtn.style.cssText='margin-top:10px;padding:7px 16px;border:1px solid var(--blue);color:var(--blue);background:white;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;';
+  toggleBtn.textContent=sdIsEdit?'조회 모드로':'수정 모드로';
+  toggleBtn.onclick=()=>{sdIsEdit=!sdIsEdit;renderSessDetailRecord();};
+  box.appendChild(toggleBtn);
+}
+
+// 수정 모드에서 필드 조작
+function setSdField(key,val,el){
+  sdRecords[sdCurrentIdx][key]=val;
+  el.closest('.button-grid').querySelectorAll('.item-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function setSdAmount(el){
+  const v=el.value.replace(/[^0-9]/g,'');
+  if(v){el.value=parseInt(v).toLocaleString('ko-KR');sdRecords[sdCurrentIdx].amount='￦'+el.value;}
+  else{el.value='';sdRecords[sdCurrentIdx].amount='';}
+}
+function cycleSdField(key,btn){
+  const s=['N/A','Y','N'];
+  const cur=sdRecords[sdCurrentIdx][key]||'N/A';
+  sdRecords[sdCurrentIdx][key]=s[(s.indexOf(cur)+1)%3];
+  btn.textContent=sdRecords[sdCurrentIdx][key];
+  btn.className='toggle-btn '+(sdRecords[sdCurrentIdx][key]==='Y'?'state-y':sdRecords[sdCurrentIdx][key]==='N'?'state-n':'state-na');
+}
+
+async function saveSessDetail(){
+  if(isBusy)return;
+  isBusy=true;
+  showUploadModal('loading','저장 중...','세션을 업데이트하고 있습니다.');
+  const brand=brands.find(b=>b.id===sdBrandId);
+  brand.sessions[sdSessionIdx].records=JSON.parse(JSON.stringify(sdRecords));
+  if(settings.sheetsUrl){
+    await sheetsPost({action:'updateSession',brandId:sdBrandId,sessionIdx:sdSessionIdx,session:brand.sessions[sdSessionIdx]});
+  }
+  isBusy=false;
+  showUploadModal('success','저장 완료!','세션이 수정되었습니다.');
+  setTimeout(()=>{hideUploadModal();closeModal('sessDetailModal');renderBrandDetail(sdBrandId);renderBrandGrid();},1500);
+}
+
+function confirmDeleteSession(){
+  if(!confirm('이 날짜의 거래 내역 전체를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.'))return;
+  if(!confirm('정말로 삭제하시겠습니까?'))return;
+  deleteSession();
+}
+async function deleteSession(){
+  if(isBusy) return;
+
+  const brand = brands.find(b => b.id === sdBrandId);
+  if(!brand){ showToast('❌ 브랜드를 찾을 수 없습니다.'); return; }
+
+  const session = brand.sessions[sdSessionIdx];
+  if(!session){ showToast('❌ 세션을 찾을 수 없습니다.'); return; }
+
+  // sessionId 추출 — 여러 경로 시도
+  const sessionId = session.sessionId || session.id || null;
+
+  console.log('[deleteSession] brandId:', sdBrandId);
+  console.log('[deleteSession] sessionIdx:', sdSessionIdx);
+  console.log('[deleteSession] session:', JSON.stringify(session).substring(0, 200));
+  console.log('[deleteSession] sessionId:', sessionId);
+
+  if(!sessionId){
+    showToast('❌ sessionId 없음. 이 세션은 삭제할 수 없습니다.');
+    return;
+  }
+
+  isBusy = true;
+  showUploadModal('loading','삭제 중...','세션을 삭제하고 있습니다.');
+
+  // 로컬에서 먼저 제거
+  brand.sessions.splice(sdSessionIdx, 1);
+
+  // Sheets 삭제
+  let sheetsOk = true;
+  if(settings.sheetsUrl){
+    const result = await sheetsPost({
+      action    : 'deleteSession',
+      brandId   : String(sdBrandId),
+      sessionId : String(sessionId)
+    });
+    console.log('[deleteSession] Sheets result:', JSON.stringify(result));
+    if(!result || !result.ok){
+      sheetsOk = false;
+    }
+  }
+
+  isBusy = false;
+  showUploadModal('success',
+    sheetsOk ? '삭제 완료!' : '⚠️ 로컬만 삭제됨',
+    sheetsOk ? '세션이 완전히 삭제되었습니다.' : 'Sheets 삭제 실패 — 콘솔 확인 요망'
+  );
+  setTimeout(()=>{
+    hideUploadModal();
+    closeModal('sessDetailModal');
+    renderBrandDetail(sdBrandId);
+    renderBrandGrid();
+  }, 1800);
+}
+
+// ══ 특이사항 ══
+function openNotes(brandId){
+  currentDetailBrandId=brandId;
+  document.getElementById('notesTextarea').value=brands.find(b=>b.id===brandId)?.notes||'';
+  document.getElementById('notesModal').classList.add('show');
+}
+async function saveNotes(){
+  const brand=brands.find(b=>b.id===currentDetailBrandId);
+  brand.notes=document.getElementById('notesTextarea').value.trim();
+  if(settings.sheetsUrl)await sheetsPost({action:'saveBrands',brands:brands.map(b=>({id:b.id,name:b.name,icon:b.icon,photo:b.photo,createdAt:b.createdAt,notes:b.notes||''}))});
+  closeModal('notesModal');renderBrandDetail(currentDetailBrandId);showToast('✅ 특이사항이 저장되었습니다.');
+}
+
+// ══ 브랜드 관리 ══
+async function deleteBrand(){
+  const brand=brands.find(b=>b.id===currentDetailBrandId);
+  if(!confirm(`"${brand?.name}" 브랜드를 삭제하시겠습니까?\n모든 이력이 삭제됩니다.`))return;
+  brands=brands.filter(b=>b.id!==currentDetailBrandId);
+  delete overrides[currentDetailBrandId];saveLocalOverrides();
+  if(settings.sheetsUrl)await sheetsPost({action:'saveBrands',brands:brands.map(b=>({id:b.id,name:b.name,icon:b.icon,photo:b.photo,createdAt:b.createdAt,notes:b.notes||''}))});
+  goBack();renderBrandGrid();showToast('🗑 브랜드가 삭제되었습니다.');
+}
+function openNewBrand(){
+  document.getElementById('newBrandName').value='';
+  document.getElementById('photoPreview').style.display='none';
+  document.getElementById('photoUploadArea').style.display='flex';
+  newBrandPhotoData=null;
+  document.getElementById('newBrandModal').classList.add('show');
+}
+function previewPhoto(input){
+  if(!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{newBrandPhotoData=e.target.result;document.getElementById('photoPreview').src=newBrandPhotoData;document.getElementById('photoPreview').style.display='block';document.getElementById('photoUploadArea').style.display='none';};
+  reader.readAsDataURL(input.files[0]);
+}
+async function createBrand(){
+  if(isBusy)return;
+  const name=document.getElementById('newBrandName').value.trim();
+  if(!name){showToast('⚠️ 브랜드명을 입력해주세요.');return;}
+  if(!settings.sheetsUrl){showToast('⚠️ 설정에서 Sheets URL을 먼저 입력해주세요.');return;}
+  isBusy=true;
+  showUploadModal('loading','브랜드 생성 중...','잠시만 기다려 주세요.');
+  const icons=['🏪','🏬','🏦','🏨','🍔','☕','🛒','🎮','💊','✈️'];
+  const brand={id:Date.now().toString(),name,icon:icons[Math.floor(Math.random()*icons.length)],photo:newBrandPhotoData||null,createdAt:new Date().toISOString().split('T')[0],notes:'',sessions:[]};
+  brands.push(brand);
+  await sheetsPost({action:'saveBrands',brands:brands.map(b=>({id:b.id,name:b.name,icon:b.icon,photo:b.photo,createdAt:b.createdAt,notes:b.notes||''}))});
+  isBusy=false;
+  showUploadModal('success','브랜드 생성 완료!',`"${name}"이 추가되었습니다.`);
+  setTimeout(()=>{hideUploadModal();closeModal('newBrandModal');renderBrandGrid();},1500);
+}
+function openEditBrand(id){
+  currentDetailBrandId=id;
+  const brand=brands.find(b=>b.id===id);
+  document.getElementById('editBrandName').value=brand.name;
+  editBrandPhotoData=brand.photo||null;
+  const d=document.getElementById('editPhotoDisplay');
+  if(brand.photo){d.innerHTML=`<img src="${brand.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">`;d.className='';}
+  else{d.innerHTML=brand.icon||'🏪';d.className='edit-photo-placeholder';}
+  document.getElementById('editBrandModal').classList.add('show');
+}
+function previewEditPhoto(input){
+  if(!input.files[0])return;
+  const reader=new FileReader();
+  reader.onload=e=>{editBrandPhotoData=e.target.result;const d=document.getElementById('editPhotoDisplay');d.innerHTML=`<img src="${editBrandPhotoData}" style="width:100%;height:100%;object-fit:cover;border-radius:14px;">`;d.className='';};
+  reader.readAsDataURL(input.files[0]);
+}
+function clearEditPhoto(){editBrandPhotoData=null;const d=document.getElementById('editPhotoDisplay');d.innerHTML='🏪';d.className='edit-photo-placeholder';}
+async function saveEditBrand(){
+  const name=document.getElementById('editBrandName').value.trim();
+  if(!name){showToast('⚠️ 브랜드명을 입력해주세요.');return;}
+  const brand=brands.find(b=>b.id===currentDetailBrandId);
+  brand.name=name;brand.photo=editBrandPhotoData;
+  await sheetsPost({action:'saveBrands',brands:brands.map(b=>({id:b.id,name:b.name,icon:b.icon,photo:b.photo,createdAt:b.createdAt,notes:b.notes||''}))});
+  closeModal('editBrandModal');
+  document.getElementById('detailTopTitle').textContent=name;
+  renderBrandDetail(currentDetailBrandId);renderBrandGrid();showToast('✅ 브랜드 정보가 수정되었습니다.');
+}
+
+// ══ 설정 ══
+function openSettings(){document.getElementById('sheetsUrlInput').value=settings.sheetsUrl||'';document.getElementById('settingsModal').classList.add('show');}
+
+// ══ 초기화 ══
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// ══ 새로고침 방지 ══
+window.addEventListener('beforeunload', e => {
+  if (screenHistory[screenHistory.length-1] === 'test' &&
+      records.some(r => r.category || r.amount || r.subCategory)) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// ══ 뒤로가기 물리키 처리 ══
+function pushState(){history.pushState({page:screenHistory[screenHistory.length-1]},'')}
+window.addEventListener('popstate',()=>{
+  if(screenHistory.length<=1){
+    if(confirm('앱을 종료하시겠습니까?')){history.go(-1);}
+    else{pushState();}
+    return;
+  }
+  // 테스트 화면에서 뒤로가기
+  if(screenHistory[screenHistory.length-1]==='test'){
+    if(records.some(r=>r.category||r.amount||r.subCategory)){
+      if(!confirm('저장을 완료한 후 테스트를 종료해 주세요.\n그래도 나가시겠습니까?')){pushState();return;}
+    }
+  }
+  goBack();
+  pushState();
+});
+pushState();
+loadLocalSettings();
+renderTabs();
+if(settings.sheetsUrl)loadBrandsFromSheets();
+else renderBrandGrid();
+</script>
+</body>
+</html>

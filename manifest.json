@@ -1,0 +1,24 @@
+{
+  "name": "UPI 거래 테스트 매니저",
+  "short_name": "UPI앱 2.0",
+  "description": "UnionPay 가맹점 거래 테스트 관리 툴",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./Icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
