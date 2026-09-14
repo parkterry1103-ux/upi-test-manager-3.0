@@ -302,7 +302,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.0</div>
+    <div class="main-version">UPI Test Manager v5.1</div>
   </div>
 </div>
 
@@ -686,7 +686,7 @@ function confirmGoBack(){
 // ══════════════════════════════════════════════
 // ══ 고정 시나리오 테스트 ══
 // ══════════════════════════════════════════════
-const QPS_METHODS=['실물 NFC','ApplePay','Xiaomi/Huawei'];
+const QPS_METHODS=['실물 NFC','ApplePay','XiaomiPay','HuaweiPay'];
 const SCENARIO_ITEMS = {
   high: [
     {id:'h1', cardKor:'체크카드', cardEn:'Debit',  method:'IC 인서트',    methodBadge:'Insert',            textLabel:'Debit-Insert'},
@@ -697,11 +697,13 @@ const SCENARIO_ITEMS = {
     {id:'h6', cardKor:'신용카드', cardEn:'Credit', method:'실물 NFC',     methodBadge:'NFC',               textLabel:'Credit-NFC'},
     {id:'h7', cardKor:'체크카드', cardEn:'Debit',  method:'ApplePay',     methodBadge:'ApplePay',          textLabel:'Debit-ApplePay'},
     {id:'h8', cardKor:'신용카드', cardEn:'Credit', method:'ApplePay',     methodBadge:'ApplePay',          textLabel:'Credit-ApplePay'},
-    {id:'h9', cardKor:'체크카드', cardEn:'Debit',  method:'Xiaomi/Huawei',methodBadge:'Xiaomi/Huawei',     textLabel:'Debit-Xiaomi/Huawei'},
-    {id:'h10',cardKor:'신용카드', cardEn:'Credit', method:'Xiaomi/Huawei',methodBadge:'Xiaomi/Huawei',     textLabel:'Credit-Xiaomi/Huawei'},
-    {id:'h11',cardKor:'체크카드', cardEn:'Debit',  method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Debit-HCE'},
-    {id:'h12',cardKor:'신용카드', cardEn:'Credit', method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Credit-HCE'},
-    {id:'h13',cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
+    {id:'h9', cardKor:'체크카드', cardEn:'Debit',  method:'XiaomiPay',    methodBadge:'XiaomiPay',         textLabel:'Debit-XiaomiPay'},
+    {id:'h10',cardKor:'신용카드', cardEn:'Credit', method:'XiaomiPay',    methodBadge:'XiaomiPay',         textLabel:'Credit-XiaomiPay'},
+    {id:'h11',cardKor:'체크카드', cardEn:'Debit',  method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Debit-HuaweiPay'},
+    {id:'h12',cardKor:'신용카드', cardEn:'Credit', method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Credit-HuaweiPay'},
+    {id:'h13',cardKor:'체크카드', cardEn:'Debit',  method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Debit-HCE'},
+    {id:'h14',cardKor:'신용카드', cardEn:'Credit', method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Credit-HCE'},
+    {id:'h15',cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
   ],
   low: [
     {id:'l1', cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
@@ -709,10 +711,12 @@ const SCENARIO_ITEMS = {
     {id:'l3', cardKor:'신용카드', cardEn:'Credit', method:'실물 NFC',     methodBadge:'NFC',               textLabel:'Credit-NFC'},
     {id:'l4', cardKor:'체크카드', cardEn:'Debit',  method:'ApplePay',     methodBadge:'ApplePay',          textLabel:'Debit-ApplePay'},
     {id:'l5', cardKor:'신용카드', cardEn:'Credit', method:'ApplePay',     methodBadge:'ApplePay',          textLabel:'Credit-ApplePay'},
-    {id:'l6', cardKor:'체크카드', cardEn:'Debit',  method:'Xiaomi/Huawei',methodBadge:'Xiaomi/Huawei',     textLabel:'Debit-Xiaomi/Huawei'},
-    {id:'l7', cardKor:'신용카드', cardEn:'Credit', method:'Xiaomi/Huawei',methodBadge:'Xiaomi/Huawei',     textLabel:'Credit-Xiaomi/Huawei'},
-    {id:'l8', cardKor:'체크카드', cardEn:'Debit',  method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Debit-HCE'},
-    {id:'l9', cardKor:'신용카드', cardEn:'Credit', method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Credit-HCE'},
+    {id:'l6', cardKor:'체크카드', cardEn:'Debit',  method:'XiaomiPay',    methodBadge:'XiaomiPay',         textLabel:'Debit-XiaomiPay'},
+    {id:'l7', cardKor:'신용카드', cardEn:'Credit', method:'XiaomiPay',    methodBadge:'XiaomiPay',         textLabel:'Credit-XiaomiPay'},
+    {id:'l8', cardKor:'체크카드', cardEn:'Debit',  method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Debit-HuaweiPay'},
+    {id:'l9', cardKor:'신용카드', cardEn:'Credit', method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Credit-HuaweiPay'},
+    {id:'l10',cardKor:'체크카드', cardEn:'Debit',  method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Debit-HCE'},
+    {id:'l11',cardKor:'신용카드', cardEn:'Credit', method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Credit-HCE'},
   ]
 };
 const SCENARIO_DEFAULT_AMOUNT = {high:'￦80,000', low:'￦1,500'};
