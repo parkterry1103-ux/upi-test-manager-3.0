@@ -310,7 +310,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.4</div>
+    <div class="main-version">UPI Test Manager v5.5</div>
   </div>
 </div>
 
@@ -991,7 +991,7 @@ function buildScenarioRecords(){
           pinBypass     : e.pinBypass,
           qpsStatus     : scenarioQpsEligible(item) ? e.qps : 'N/A',
           status        : e.status,
-          memo          : `[${device}][${tierLabel}] ${item.textLabel}` + (e.memo ? ` — ${e.memo}` : ''),
+          memo          : e.memo||'',
           cardNumber    : ''
         });
       });
