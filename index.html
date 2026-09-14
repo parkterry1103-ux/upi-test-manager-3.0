@@ -310,7 +310,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.3</div>
+    <div class="main-version">UPI Test Manager v5.4</div>
   </div>
 </div>
 
@@ -747,7 +747,9 @@ const SCENARIO_DEFAULT_AMOUNT = {high:'￦80,000', low:'￦1,500'};
 function scenarioQpsEligible(item){return QPS_METHODS.includes(item.method);}
 function scenarioItemsForDevice(tier,device=scenarioDevice){
   const items=SCENARIO_ITEMS[tier]||[];
-  return device==='PDA' ? items.filter(item=>!PDA_EXCLUDED_METHODS.includes(item.method)) : items;
+  if(device==='PDA')return items.filter(item=>!PDA_EXCLUDED_METHODS.includes(item.method));
+  if(tier==='low')return [...items.filter(item=>item.method==='QR CPM'),...items.filter(item=>item.method!=='QR CPM')];
+  return items;
 }
 
 let scenarioDevice='PDA';
