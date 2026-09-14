@@ -77,9 +77,6 @@
     #screen-scenario{background:var(--hotkey-x-bg);transition:background 0.5s ease;}
     #screen-scenario.hotkey-o{background:var(--hotkey-y-bg);}
     #screen-scenario .top-bar{background:white;}
-    .scenario-device-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0;background:white;padding:5px;border-radius:14px;box-shadow:var(--card-shadow);}
-    .scenario-device-btn{padding:11px 4px;border:none;border-radius:10px;background:transparent;font-size:12px;font-weight:800;color:#777;cursor:pointer;transition:var(--tr);}
-    .scenario-device-btn.active{background:var(--grad);color:white;box-shadow:0 4px 12px rgba(0,51,141,0.25);}
     .scenario-draft-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 2px;}
     .scenario-draft-btn{padding:10px 6px;border:1px solid #d8e0ef;border-radius:10px;background:white;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;transition:var(--tr);}
     .scenario-draft-btn:active{transform:scale(0.97);}
@@ -103,6 +100,7 @@
     .scenario-badge-debit{background:#e3f2fd;color:#1565c0;}
     .scenario-badge-credit{background:#fff3e0;color:#e65100;}
     .scenario-badge-dual{background:#f3e5f5;color:#7b1fa2;}
+    .scenario-badge-hce{background:#e8f5e9;color:#2e7d32;}
     .scenario-badge-method{background:#f0f2f5;color:#555;}
     .scenario-item-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#ddd;}
     .scenario-item-dot.dot-y{background:var(--teal);}
@@ -310,7 +308,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.5</div>
+    <div class="main-version">UPI Test Manager v5.6</div>
   </div>
 </div>
 
@@ -330,11 +328,8 @@
       <button class="scenario-draft-btn" id="scenarioRestoreBtn" onclick="restoreScenarioDraft()">↩ 이전 기록 돌아가기</button>
       <button class="scenario-draft-btn new" onclick="resetScenarioDraft()">＋ 새 기록 시작</button>
     </div>
-    <div class="scenario-device-tabs" id="scenarioDeviceTabs">
-      <button class="scenario-device-btn" id="devicePda" onclick="setScenarioDevice('PDA')">PDA</button>
-      <button class="scenario-device-btn" id="deviceWin" onclick="setScenarioDevice('WIN-POS')">WIN-POS</button>
-      <button class="scenario-device-btn" id="deviceUnmanned" onclick="setScenarioDevice('UNMANNED-POS')">UNMANNED-POS</button>
-    </div>
+    <div class="scenario-section-title">HCE (1회)</div>
+    <div class="scenario-list" id="scenarioListCommon"></div>
     <div class="scenario-hotkey-tabs" id="scenarioHotkeyTabs">
       <button class="scenario-hotkey-btn" id="hkTabN" onclick="setScenarioHotkeyTab('N')">핫키 X</button>
       <button class="scenario-hotkey-btn" id="hkTabY" onclick="setScenarioHotkeyTab('Y')">핫키 O</button>
@@ -704,10 +699,12 @@ function confirmGoBack(){
 // ══ 고정 시나리오 테스트 ══
 // ══════════════════════════════════════════════
 const QPS_METHODS=['실물 NFC','ApplePay','XiaomiPay','HuaweiPay'];
-const SCENARIO_DEVICE_TYPES=['PDA','WIN-POS','UNMANNED-POS'];
-const PDA_EXCLUDED_METHODS=['실물 NFC','ApplePay','XiaomiPay','HuaweiPay','HCE(Android)'];
+const SCENARIO_TERMINAL_TYPE='WIN-POS';
 const SCENARIO_DRAFT_KEY=STORE_KEY+'_scenario_draft';
 const SCENARIO_ITEMS = {
+  common: [
+    {id:'c1', cardKor:'HCE', cardEn:'HCE', method:'HCE(Android)', methodBadge:'HCE', textLabel:'HCE'}
+  ],
   high: [
     {id:'h1', cardKor:'체크카드', cardEn:'Debit',  method:'IC 인서트',    methodBadge:'Insert',            textLabel:'Debit-Insert'},
     {id:'h2', cardKor:'신용카드', cardEn:'Credit', method:'IC 인서트',    methodBadge:'Insert(PinBypass)', textLabel:'Credit-Insert(PinBypass)', pin:'bypass'},
@@ -721,15 +718,9 @@ const SCENARIO_ITEMS = {
     {id:'h10',cardKor:'신용카드', cardEn:'Credit', method:'XiaomiPay',    methodBadge:'XiaomiPay',         textLabel:'Credit-XiaomiPay'},
     {id:'h11',cardKor:'체크카드', cardEn:'Debit',  method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Debit-HuaweiPay'},
     {id:'h12',cardKor:'신용카드', cardEn:'Credit', method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Credit-HuaweiPay'},
-    {id:'h13',cardKor:'체크카드', cardEn:'Debit',  method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Debit-HCE'},
-    {id:'h14',cardKor:'신용카드', cardEn:'Credit', method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Credit-HCE'},
     {id:'h15',cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
   ],
   low: [
-    {id:'l12',cardKor:'체크카드', cardEn:'Debit',  method:'IC 인서트',    methodBadge:'Insert',            textLabel:'Debit-Insert'},
-    {id:'l13',cardKor:'신용카드', cardEn:'Credit', method:'IC 인서트',    methodBadge:'Insert(PinBypass)', textLabel:'Credit-Insert(PinBypass)', pin:'bypass'},
-    {id:'l14',cardKor:'신용카드', cardEn:'Credit', method:'IC 인서트',    methodBadge:'Insert(PIN)',        textLabel:'Credit-Insert(PIN)', pin:'input'},
-    {id:'l15',cardKor:'듀얼카드', cardEn:'Dual',   method:'IC 인서트',    methodBadge:'Insert',            textLabel:'Dual-Insert', dual:true},
     {id:'l1', cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
     {id:'l2', cardKor:'체크카드', cardEn:'Debit',  method:'실물 NFC',     methodBadge:'NFC',               textLabel:'Debit-NFC'},
     {id:'l3', cardKor:'신용카드', cardEn:'Credit', method:'실물 NFC',     methodBadge:'NFC',               textLabel:'Credit-NFC'},
@@ -739,20 +730,13 @@ const SCENARIO_ITEMS = {
     {id:'l7', cardKor:'신용카드', cardEn:'Credit', method:'XiaomiPay',    methodBadge:'XiaomiPay',         textLabel:'Credit-XiaomiPay'},
     {id:'l8', cardKor:'체크카드', cardEn:'Debit',  method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Debit-HuaweiPay'},
     {id:'l9', cardKor:'신용카드', cardEn:'Credit', method:'HuaweiPay',    methodBadge:'HuaweiPay',         textLabel:'Credit-HuaweiPay'},
-    {id:'l10',cardKor:'체크카드', cardEn:'Debit',  method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Debit-HCE'},
-    {id:'l11',cardKor:'신용카드', cardEn:'Credit', method:'HCE(Android)', methodBadge:'HCE',               textLabel:'Credit-HCE'},
   ]
 };
-const SCENARIO_DEFAULT_AMOUNT = {high:'￦80,000', low:'￦1,500'};
+const SCENARIO_DEFAULT_AMOUNT = {common:'', high:'￦80,000', low:'￦1,500'};
 function scenarioQpsEligible(item){return QPS_METHODS.includes(item.method);}
-function scenarioItemsForDevice(tier,device=scenarioDevice){
-  const items=SCENARIO_ITEMS[tier]||[];
-  if(device==='PDA')return items.filter(item=>!PDA_EXCLUDED_METHODS.includes(item.method));
-  if(tier==='low')return [...items.filter(item=>item.method==='QR CPM'),...items.filter(item=>item.method!=='QR CPM')];
-  return items;
-}
+function scenarioItems(tier){return SCENARIO_ITEMS[tier]||[];}
 
-let scenarioDevice='PDA';
+let scenarioDevice=SCENARIO_TERMINAL_TYPE;
 let scenarioHotkey='N';       // 'N' = 핫키X, 'Y' = 핫키O
 let scenarioOpenKey=null;
 let scenarioData={};          // key: `${device}_${hotkey}_${itemId}` -> 테스트 입력값
@@ -773,18 +757,11 @@ function hasScenarioData(){
 }
 
 function goToScenario(){
-  scenarioDevice='PDA';scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
+  scenarioDevice=SCENARIO_TERMINAL_TYPE;scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
   document.getElementById('scenarioStoreName').value='';
   renderScenario();
   goTo('scenario');
   updateScenarioDraftButton();
-}
-
-function setScenarioDevice(device){
-  if(!SCENARIO_DEVICE_TYPES.includes(device)||scenarioDevice===device)return;
-  scenarioDevice=device;scenarioOpenKey=null;
-  saveScenarioDraft();
-  renderScenario();
 }
 
 function setScenarioHotkeyTab(tab){
@@ -795,14 +772,12 @@ function setScenarioHotkeyTab(tab){
 }
 
 function renderScenario(){
-  document.getElementById('devicePda').classList.toggle('active',scenarioDevice==='PDA');
-  document.getElementById('deviceWin').classList.toggle('active',scenarioDevice==='WIN-POS');
-  document.getElementById('deviceUnmanned').classList.toggle('active',scenarioDevice==='UNMANNED-POS');
   document.getElementById('hkTabN').classList.toggle('active',scenarioHotkey==='N');
   document.getElementById('hkTabY').classList.toggle('active',scenarioHotkey==='Y');
   document.getElementById('screen-scenario').classList.toggle('hotkey-o',scenarioHotkey==='Y');
-  renderScenarioList('high',scenarioItemsForDevice('high'),document.getElementById('scenarioListHigh'));
-  renderScenarioList('low', scenarioItemsForDevice('low'), document.getElementById('scenarioListLow'));
+  renderScenarioList('common',scenarioItems('common'),document.getElementById('scenarioListCommon'),'COMMON');
+  renderScenarioList('high',scenarioItems('high'),document.getElementById('scenarioListHigh'));
+  renderScenarioList('low', scenarioItems('low'), document.getElementById('scenarioListLow'));
   updateScenarioProgress();
 }
 
@@ -815,10 +790,10 @@ function scenarioToggleCell(key,field,label,value,itemId,tier,full){
   </div>`;
 }
 
-function renderScenarioList(tier,items,container){
+function renderScenarioList(tier,items,container,tab=scenarioHotkey){
   container.innerHTML=items.map((item,idx)=>{
-    const entry=getScenarioEntry(scenarioDevice,scenarioHotkey,item.id,tier);
-    const key=scenarioKey(scenarioDevice,scenarioHotkey,item.id);
+    const entry=getScenarioEntry(scenarioDevice,tab,item.id,tier);
+    const key=scenarioKey(scenarioDevice,tab,item.id);
     const isOpen=scenarioOpenKey===key;
     const dotCls=entry.status==='Y'?'dot-y':entry.status==='N'?'dot-n':'';
     const doneCls=entry.status==='Y'?'done-y':entry.status==='N'?'done-n':'';
@@ -860,7 +835,7 @@ function renderScenarioList(tier,items,container){
           <div class="scenario-toggle-grid">
             ${grid}
           </div>
-          <input class="scenario-input scenario-memo-input" type="text" placeholder="결과 메모 (Y 선택 시 PEM/RC 자동 입력)" value="${entry.memo||''}" oninput="setScenarioMemo('${key}',this.value)">
+          <input class="scenario-input scenario-memo-input" type="text" placeholder="결과 메모 (Y 선택 시 한도초과 자동 입력)" value="${entry.memo||''}" oninput="setScenarioMemo('${key}',this.value)">
         </div>
       </div>
     </div>`;
@@ -885,18 +860,7 @@ function setScenarioAmount(key,el){
   saveScenarioDraft();
 }
 function getScenarioItem(itemId,tier){return (SCENARIO_ITEMS[tier]||[]).find(item=>item.id===itemId);}
-function getScenarioAutoResult(item,tier){
-  if(!item)return '';
-  let pem='';
-  let rc='51';
-  if(item.method==='IC 인서트') pem=item.pin==='bypass'?'052':'051';
-  else if(item.method==='QR CPM') pem='042';
-  else if(tier==='high') pem='071';
-  else if(item.method==='실물 NFC') pem=item.cardEn==='Credit'?'072':'071';
-  else if(['ApplePay','XiaomiPay','HuaweiPay','HCE(Android)'].includes(item.method)) pem=item.method==='ApplePay'&&item.cardEn==='Debit'?'071':'072';
-  if(item.cardEn==='Credit'&&['ApplePay','XiaomiPay','HuaweiPay','HCE(Android)'].includes(item.method)) rc='61';
-  return pem?`한도초과 pem${pem} rc${rc}`:'';
-}
+function getScenarioAutoResult(item){return item?'한도초과':'';}
 function cycleScenarioField(key,field,itemId,tier){
   if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
   const s=['N/A','Y','N'];
@@ -914,14 +878,19 @@ function cycleScenarioField(key,field,itemId,tier){
   renderScenario();
 }
 function updateScenarioProgress(){
-  const currentItems=[...scenarioItemsForDevice('high'),...scenarioItemsForDevice('low')];
+  const commonItems=scenarioItems('common');
+  const currentItems=[...scenarioItems('high'),...scenarioItems('low')];
   const total=currentItems.length;
   let done=0;
   currentItems.forEach(item=>{
     const e=scenarioData[scenarioKey(scenarioDevice,scenarioHotkey,item.id)];
     if(e&&(e.status==='Y'||e.status==='N'))done++;
   });
-  document.getElementById('scenarioProgress').textContent=`${scenarioDevice} · 핫키 ${scenarioHotkey==='Y'?'O':'X'} · ${done}/${total} 완료`;
+  const commonDone=commonItems.filter(item=>{
+    const e=scenarioData[scenarioKey(scenarioDevice,'COMMON',item.id)];
+    return e&&(e.status==='Y'||e.status==='N');
+  }).length;
+  document.getElementById('scenarioProgress').textContent=`HCE ${commonDone}/${commonItems.length} · 핫키 ${scenarioHotkey==='Y'?'O':'X'} ${done}/${total} 완료`;
 }
 
 function hasScenarioEntryData(){
@@ -940,19 +909,54 @@ function saveScenarioDraft(){
   if(!storeName.trim()&&!hasScenarioEntryData()){updateScenarioDraftButton();return;}
   try{
     localStorage.setItem(SCENARIO_DRAFT_KEY,JSON.stringify({
-      version:1,storeName,scenarioDevice,scenarioHotkey,scenarioData,savedAt:new Date().toISOString()
+      version:2,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,savedAt:new Date().toISOString()
     }));
   }catch(e){}
   updateScenarioDraftButton();
+}
+function normalizeScenarioEntry(entry){
+  const normalized={...entry};
+  if(normalized.memoAuto)normalized.memo='한도초과';
+  return normalized;
+}
+function normalizeScenarioDraftData(data,preferredDevice){
+  if(!data||typeof data!=='object')return {};
+  const normalized={};
+  const devices=[preferredDevice,SCENARIO_TERMINAL_TYPE,'UNMANNED-POS','PDA'].filter((v,i,a)=>v&&a.indexOf(v)===i);
+  const pick=(tab,id)=>{
+    for(const device of devices){
+      const entry=data[scenarioKey(device,tab,id)];
+      if(entry)return normalizeScenarioEntry(entry);
+    }
+    return null;
+  };
+  ['N','Y'].forEach(tab=>['high','low'].forEach(tier=>scenarioItems(tier).forEach(item=>{
+    const entry=pick(tab,item.id);
+    if(entry)normalized[scenarioKey(SCENARIO_TERMINAL_TYPE,tab,item.id)]=entry;
+  })));
+  const currentCommon=data[scenarioKey(SCENARIO_TERMINAL_TYPE,'COMMON','c1')];
+  let hceEntry=currentCommon?normalizeScenarioEntry(currentCommon):null;
+  if(!hceEntry){
+    const oldHceIds=['h13','h14','l10','l11'];
+    for(const tab of ['N','Y']){
+      for(const id of oldHceIds){
+        hceEntry=pick(tab,id);
+        if(hceEntry)break;
+      }
+      if(hceEntry)break;
+    }
+  }
+  if(hceEntry)normalized[scenarioKey(SCENARIO_TERMINAL_TYPE,'COMMON','c1')]=hceEntry;
+  return normalized;
 }
 function restoreScenarioDraft(){
   try{
     const raw=localStorage.getItem(SCENARIO_DRAFT_KEY);
     if(!raw){showToast('보존된 이전 기록이 없습니다.');return;}
     const draft=JSON.parse(raw);
-    scenarioDevice=SCENARIO_DEVICE_TYPES.includes(draft.scenarioDevice)?draft.scenarioDevice:'PDA';
+    scenarioDevice=SCENARIO_TERMINAL_TYPE;
     scenarioHotkey=['N','Y'].includes(draft.scenarioHotkey)?draft.scenarioHotkey:'N';
-    scenarioData=draft.scenarioData&&typeof draft.scenarioData==='object'?draft.scenarioData:{};
+    scenarioData=normalizeScenarioDraftData(draft.scenarioData,draft.scenarioDevice);
     document.getElementById('scenarioStoreName').value=draft.storeName||'';
     scenarioOpenKey=null;
     renderScenario();
@@ -962,7 +966,7 @@ function restoreScenarioDraft(){
 function resetScenarioDraft(){
   if(hasScenarioData()&&!confirm('현재 입력 내용을 지우고 새 기록을 시작하시겠습니까?'))return;
   try{localStorage.removeItem(SCENARIO_DRAFT_KEY);}catch(e){}
-  scenarioDevice='PDA';scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
+  scenarioDevice=SCENARIO_TERMINAL_TYPE;scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
   document.getElementById('scenarioStoreName').value='';
   renderScenario();updateScenarioDraftButton();
   showToast('＋ 새 기록을 시작합니다.');
@@ -970,33 +974,30 @@ function resetScenarioDraft(){
 
 function buildScenarioRecords(){
   const list=[];
-  SCENARIO_DEVICE_TYPES.forEach(device=>['N','Y'].forEach(tab=>{
-    [{tierKey:'high',tierLabel:'고액'},{tierKey:'low',tierLabel:'소액'}].forEach(({tierKey,tierLabel})=>{
-      const items=scenarioItemsForDevice(tierKey,device);
-      items.forEach(item=>{
-        const key=scenarioKey(device,tab,item.id);
-        const e=scenarioData[key];
-        if(!e)return;
-        const touched = e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo;
-        if(!touched)return;
-        list.push({
-          terminalType   : device,
-          category      : item.cardKor,
-          subCategory   : item.method,
-          amount        : e.amount||'',
-          hotkey        : item.dual ? e.hotkeyToggle : tab,
-          brandSelection: item.dual ? e.brandToggle : 'N/A',
-          pinOut        : e.pinOut,
-          pinIn         : e.pinIn,
-          pinBypass     : e.pinBypass,
-          qpsStatus     : scenarioQpsEligible(item) ? e.qps : 'N/A',
-          status        : e.status,
-          memo          : e.memo||'',
-          cardNumber    : ''
-        });
-      });
+  const append=(item,e,tab)=>{
+    if(!e)return;
+    const touched=e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo;
+    if(!touched)return;
+    list.push({
+      terminalType   : SCENARIO_TERMINAL_TYPE,
+      category       : item.cardKor,
+      subCategory    : item.method,
+      amount         : e.amount||'',
+      hotkey         : tab==='COMMON' ? 'N/A' : (item.dual ? e.hotkeyToggle : tab),
+      brandSelection : item.dual ? e.brandToggle : 'N/A',
+      pinOut         : e.pinOut,
+      pinIn          : e.pinIn,
+      pinBypass      : e.pinBypass,
+      qpsStatus      : scenarioQpsEligible(item) ? e.qps : 'N/A',
+      status         : e.status,
+      memo           : e.memoAuto ? '한도초과' : (e.memo||''),
+      cardNumber     : ''
     });
-  }));
+  };
+  scenarioItems('common').forEach(item=>append(item,scenarioData[scenarioKey(SCENARIO_TERMINAL_TYPE,'COMMON',item.id)],'COMMON'));
+  ['N','Y'].forEach(tab=>['high','low'].forEach(tier=>scenarioItems(tier).forEach(item=>
+    append(item,scenarioData[scenarioKey(SCENARIO_TERMINAL_TYPE,tab,item.id)],tab)
+  )));
   return list;
 }
 
