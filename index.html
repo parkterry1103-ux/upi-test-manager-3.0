@@ -310,7 +310,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.2</div>
+    <div class="main-version">UPI Test Manager v5.3</div>
   </div>
 </div>
 
@@ -705,7 +705,7 @@ function confirmGoBack(){
 // ══════════════════════════════════════════════
 const QPS_METHODS=['실물 NFC','ApplePay','XiaomiPay','HuaweiPay'];
 const SCENARIO_DEVICE_TYPES=['PDA','WIN-POS','UNMANNED-POS'];
-const PDA_EXCLUDED_METHODS=['실물 NFC','ApplePay','XiaomiPay','HuaweiPay'];
+const PDA_EXCLUDED_METHODS=['실물 NFC','ApplePay','XiaomiPay','HuaweiPay','HCE(Android)'];
 const SCENARIO_DRAFT_KEY=STORE_KEY+'_scenario_draft';
 const SCENARIO_ITEMS = {
   high: [
@@ -726,6 +726,10 @@ const SCENARIO_ITEMS = {
     {id:'h15',cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
   ],
   low: [
+    {id:'l12',cardKor:'체크카드', cardEn:'Debit',  method:'IC 인서트',    methodBadge:'Insert',            textLabel:'Debit-Insert'},
+    {id:'l13',cardKor:'신용카드', cardEn:'Credit', method:'IC 인서트',    methodBadge:'Insert(PinBypass)', textLabel:'Credit-Insert(PinBypass)', pin:'bypass'},
+    {id:'l14',cardKor:'신용카드', cardEn:'Credit', method:'IC 인서트',    methodBadge:'Insert(PIN)',        textLabel:'Credit-Insert(PIN)', pin:'input'},
+    {id:'l15',cardKor:'듀얼카드', cardEn:'Dual',   method:'IC 인서트',    methodBadge:'Insert',            textLabel:'Dual-Insert', dual:true},
     {id:'l1', cardKor:'체크카드', cardEn:'Debit',  method:'QR CPM',       methodBadge:'QR',                textLabel:'Debit-QR'},
     {id:'l2', cardKor:'체크카드', cardEn:'Debit',  method:'실물 NFC',     methodBadge:'NFC',               textLabel:'Debit-NFC'},
     {id:'l3', cardKor:'신용카드', cardEn:'Credit', method:'실물 NFC',     methodBadge:'NFC',               textLabel:'Credit-NFC'},
