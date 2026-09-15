@@ -308,7 +308,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.6</div>
+    <div class="main-version">UPI Test Manager v5.7</div>
   </div>
 </div>
 
@@ -458,6 +458,8 @@ let commonCards={realCheck:'',realCredit:'',realDual:'',apple:'',xiaomi:'',huawe
 const initRecord=()=>({category:'',subCategory:'',amount:'',hotkey:'N/A',brandSelection:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qpsStatus:'N/A',status:'N/A',memo:''});
 let records=[initRecord()], currentIdx=0, screenHistory=['main'];
 let isBusy=false;
+const newUploadSessionId=()=>globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+let unitUploadSessionId=newUploadSessionId();
 
 // ══ 로컬 설정 ══
 const STORE_KEY = 'upi_acceptance_v5_app_v1';
@@ -489,9 +491,53 @@ async function sheetsGet(action,params={}){
   Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
   try{const r=await fetch(url.toString());return await r.json();}catch(e){return null;}
 }
-async function sheetsPost(payload){
-  if(!settings.sheetsUrl)return null;
-  try{const r=await fetch(settings.sheetsUrl,{method:'POST',body:JSON.stringify(payload)});return await r.json();}catch(e){return null;}
+async function sheetsPost(payload,url=settings.sheetsUrl){
+  if(!url)return null;
+  try{const r=await fetch(url,{method:'POST',body:JSON.stringify(payload)});return await r.json();}catch(e){return null;}
+}
+
+// 동일 저장 시도는 전송 전에 브라우저에 기록한다. 응답 실패도 시트 반영 여부가 불확실하므로 재전송하지 않는다.
+async function uploadReceiptKey(payload,sessionId,url){
+  const source=JSON.stringify({sessionId,url,payload});
+  if(globalThis.crypto?.subtle){
+    const bytes=new TextEncoder().encode(source);
+    const digest=await crypto.subtle.digest('SHA-256',bytes);
+    return STORE_KEY+'_upload_'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  let hash=2166136261;
+  for(let i=0;i<source.length;i++)hash=Math.imul(hash^source.charCodeAt(i),16777619);
+  return STORE_KEY+'_upload_'+sessionId+'_'+(hash>>>0).toString(16);
+}
+async function saveSessionOnce(payload,sessionId){
+  const url=settings.sheetsUrl;
+  const key=await uploadReceiptKey(payload,sessionId,url);
+  const send=async()=>{
+    try{
+      const receipt=localStorage.getItem(key);
+      if(receipt)return {state:receipt==='saved'?'duplicate':'uncertain'};
+      localStorage.setItem(key,'pending');
+    }catch(e){return {state:'unavailable'};}
+    const result=await sheetsPost(payload,url);
+    if(result&&result.ok){
+      try{localStorage.setItem(key,'saved');}catch(e){}
+      return {state:'saved'};
+    }
+    return {state:'uncertain'};
+  };
+  if(navigator.locks?.request)return navigator.locks.request(key,send);
+  return send();
+}
+function showUploadResult(state){
+  if(state==='saved'){
+    showUploadModal('success','저장 완료!','Google Sheets에 저장되었습니다.');
+    setTimeout(()=>hideUploadModal(),1800);
+  }else{
+    hideUploadModal();
+    const message=state==='duplicate'?'✅ 이미 저장한 테스트 결과입니다. 중복 업로드하지 않았습니다.':
+      state==='unavailable'?'❌ 브라우저 저장 기능을 사용할 수 없어 업로드하지 않았습니다.':
+      '⚠️ 저장 결과가 불확실합니다. 중복 방지를 위해 재전송하지 않았으니 시트를 확인해주세요.';
+    showToast(message);
+  }
 }
 
 // ══ 화면 전환 ══
@@ -524,6 +570,7 @@ function closeModal(id,e){
 // ══ 메인 ══
 function goToUnitTest(){
   records=[initRecord()];currentIdx=0;
+  unitUploadSessionId=newUploadSessionId();
   commonCards={realCheck:'',realCredit:'',realDual:'',apple:'',xiaomi:'',huawei:'',qr:''};
   document.getElementById('storeName').value='';
   ['realCheck','realCredit','realDual','apple','xiaomi','huawei','qr'].forEach(k=>{const el=document.getElementById('cc_'+k);if(el)el.value='';});
@@ -672,12 +719,9 @@ async function uploadAndSave(){
     cardNumber     : getAssignedCard(r.category, r.subCategory)
   }));
   const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
-  const result=await sheetsPost(payload);
-  isBusy=false;
-  if(result&&result.ok){
-    showUploadModal('success','저장 완료!','Google Sheets에 저장되었습니다.');
-    setTimeout(()=>hideUploadModal(),1800);
-  }else{hideUploadModal();showToast('❌ 저장 실패. URL 설정을 확인해주세요.');}
+  try{showUploadResult((await saveSessionOnce(payload,unitUploadSessionId)).state);}
+  catch(e){showUploadResult('uncertain');}
+  finally{isBusy=false;}
 }
 function showUploadModal(state,title,sub){
   document.getElementById('uploadModal').classList.add('show');
@@ -740,6 +784,7 @@ let scenarioDevice=SCENARIO_TERMINAL_TYPE;
 let scenarioHotkey='N';       // 'N' = 핫키X, 'Y' = 핫키O
 let scenarioOpenKey=null;
 let scenarioData={};          // key: `${device}_${hotkey}_${itemId}` -> 테스트 입력값
+let scenarioUploadSessionId=newUploadSessionId();
 
 function scenarioKey(device,tab,id){return device+'_'+tab+'_'+id;}
 function newScenarioEntry(tier){
@@ -758,6 +803,7 @@ function hasScenarioData(){
 
 function goToScenario(){
   scenarioDevice=SCENARIO_TERMINAL_TYPE;scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
+  scenarioUploadSessionId=newUploadSessionId();
   document.getElementById('scenarioStoreName').value='';
   renderScenario();
   goTo('scenario');
@@ -909,7 +955,8 @@ function saveScenarioDraft(){
   if(!storeName.trim()&&!hasScenarioEntryData()){updateScenarioDraftButton();return;}
   try{
     localStorage.setItem(SCENARIO_DRAFT_KEY,JSON.stringify({
-      version:2,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,savedAt:new Date().toISOString()
+      version:3,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,
+      scenarioUploadSessionId,savedAt:new Date().toISOString()
     }));
   }catch(e){}
   updateScenarioDraftButton();
@@ -957,6 +1004,7 @@ function restoreScenarioDraft(){
     scenarioDevice=SCENARIO_TERMINAL_TYPE;
     scenarioHotkey=['N','Y'].includes(draft.scenarioHotkey)?draft.scenarioHotkey:'N';
     scenarioData=normalizeScenarioDraftData(draft.scenarioData,draft.scenarioDevice);
+    scenarioUploadSessionId=draft.scenarioUploadSessionId||newUploadSessionId();
     document.getElementById('scenarioStoreName').value=draft.storeName||'';
     scenarioOpenKey=null;
     renderScenario();
@@ -967,6 +1015,7 @@ function resetScenarioDraft(){
   if(hasScenarioData()&&!confirm('현재 입력 내용을 지우고 새 기록을 시작하시겠습니까?'))return;
   try{localStorage.removeItem(SCENARIO_DRAFT_KEY);}catch(e){}
   scenarioDevice=SCENARIO_TERMINAL_TYPE;scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
+  scenarioUploadSessionId=newUploadSessionId();
   document.getElementById('scenarioStoreName').value='';
   renderScenario();updateScenarioDraftButton();
   showToast('＋ 새 기록을 시작합니다.');
@@ -1011,12 +1060,9 @@ async function uploadScenario(){
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
   const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
-  const result=await sheetsPost(payload);
-  isBusy=false;
-  if(result&&result.ok){
-    showUploadModal('success','저장 완료!','Google Sheets에 저장되었습니다.');
-    setTimeout(()=>hideUploadModal(),1800);
-  }else{hideUploadModal();showToast('❌ 저장 실패. URL 설정을 확인해주세요.');}
+  try{showUploadResult((await saveSessionOnce(payload,scenarioUploadSessionId)).state);}
+  catch(e){showUploadResult('uncertain');}
+  finally{isBusy=false;}
 }
 
 function saveScenarioExcel(){
