@@ -167,6 +167,7 @@
     .card-help{font-size:10.5px;color:#82908f;margin-top:7px;line-height:1.45;}
     .card-import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
     .card-import-btn{padding:10px;border:1px solid #ccd7eb;border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;text-align:center;}
+    .card-drive-btn{grid-column:1/-1;text-decoration:none;background:#edf7f3;color:#08765f;border-color:#b9ddd3;}
     .card-import-btn input{display:none;}
     .scenario-card-panel{background:#eef8f7;border:1px solid #c9e4e1;border-radius:10px;padding:10px;}
     .scenario-card-panel .card-select,.scenario-card-panel .card-prev-btn{margin-bottom:6px;}
@@ -318,7 +319,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.8</div>
+    <div class="main-version">UPI Test Manager v5.9</div>
   </div>
 </div>
 
@@ -442,7 +443,9 @@
       <div class="card-import-actions">
         <label class="card-import-btn">카드정보 가져오기<input type="file" accept=".json,application/json" onchange="importCardCatalogFile(this)"></label>
         <button class="card-import-btn" onclick="exportCardCatalog()">카드정보 내보내기</button>
+        <a class="card-import-btn card-drive-btn" href="https://drive.google.com/file/d/1Y66A4sYQurzPZjfABc27rBo3joRtXkbf/view?usp=drivesdk" target="_blank" rel="noopener">공유 Drive에서 카드정보 파일 받기</a>
       </div>
+      <div class="settings-desc" style="margin-top:8px;">새 기기에서는 공유 Drive 파일을 받은 뒤 ‘카드정보 가져오기’를 한 번 실행하세요.</div>
     </div>
     <button class="settings-save-btn" onclick="saveSettings()">저장</button>
   </div>
