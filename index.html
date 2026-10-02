@@ -168,6 +168,10 @@
     .card-import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
     .card-import-btn{padding:10px;border:1px solid #ccd7eb;border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;text-align:center;}
     .card-drive-btn{grid-column:1/-1;text-decoration:none;background:#edf7f3;color:#08765f;border-color:#b9ddd3;}
+    .card-unlock-row{display:flex;gap:8px;margin-top:10px;}
+    .card-unlock-input{flex:1;min-width:0;padding:11px 12px;border:1px solid #ccd7eb;border-radius:10px;font-size:13px;outline:none;}
+    .card-unlock-btn{padding:10px 14px;border:0;border-radius:10px;background:var(--blue);color:white;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;}
+    .card-unlock-btn:disabled{opacity:.55;cursor:wait;}
     .card-import-btn input{display:none;}
     .scenario-card-panel{background:#eef8f7;border:1px solid #c9e4e1;border-radius:10px;padding:10px;}
     .scenario-card-panel .card-select,.scenario-card-panel .card-prev-btn{margin-bottom:6px;}
@@ -319,7 +323,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v5.9</div>
+    <div class="main-version">UPI Test Manager v6.0</div>
   </div>
 </div>
 
@@ -440,12 +444,17 @@
     <div class="settings-row">
       <div class="settings-label">카드정보 관리</div>
       <div class="settings-desc" id="cardCatalogStatus">이 브라우저에 저장된 카드정보를 불러오거나 백업합니다.</div>
+      <div class="card-unlock-row">
+        <input class="card-unlock-input" id="cardCatalogPin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="팀 암호 6자리" onkeydown="if(event.key==='Enter')unlockSharedCardCatalog()">
+        <button class="card-unlock-btn" id="cardCatalogUnlockBtn" onclick="unlockSharedCardCatalog()">암호로 불러오기</button>
+      </div>
+      <div class="settings-desc" style="margin-top:7px;">새 기기에서는 팀 암호를 한 번 입력하면 카드 선택 목록이 저장됩니다.</div>
       <div class="card-import-actions">
-        <label class="card-import-btn">카드정보 가져오기<input type="file" accept=".json,application/json" onchange="importCardCatalogFile(this)"></label>
+        <label class="card-import-btn">기기 파일에서 가져오기<input type="file" accept=".json,application/json" onchange="importCardCatalogFile(this)"></label>
         <button class="card-import-btn" onclick="exportCardCatalog()">카드정보 내보내기</button>
         <a class="card-import-btn card-drive-btn" href="https://drive.google.com/file/d/1Y66A4sYQurzPZjfABc27rBo3joRtXkbf/view?usp=drivesdk" target="_blank" rel="noopener">공유 Drive에서 카드정보 파일 받기</a>
       </div>
-      <div class="settings-desc" style="margin-top:8px;">새 기기에서는 공유 Drive 파일을 받은 뒤 ‘카드정보 가져오기’를 한 번 실행하세요.</div>
+      <div class="settings-desc" style="margin-top:8px;">파일 가져오기와 공유 Drive는 암호 방식이 되지 않을 때 사용하는 백업 방법입니다.</div>
     </div>
     <button class="settings-save-btn" onclick="saveSettings()">저장</button>
   </div>
@@ -477,9 +486,11 @@ let unitUploadSessionId=newUploadSessionId();
 // ══ 로컬 설정 ══
 const STORE_KEY = 'upi_acceptance_v5_app_v1';
 const CARD_CATALOG_KEY=STORE_KEY+'_card_catalog';
+const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'qKJgFWHWEQLgilLWsLKzag==',iv:'VsR9rHC03LGNNtsN',data:'H7JtG/WCir2cquJoc4LMZVnwI8jbNKSmuHIfnMCnLdGpIZ5UC7Y5N4OWUUpq/RDlI1uidpSuOfTcv1zIJeZUr/M40q3lf+Ce0YRtWoF9smL/R5G0yOserUADLn1eQHXuUj3zV0uRk9ixI0fj8BIgV2kL/rNBD3zsRkIAdPVlfroXJYFZ8nFsWGCuoYSlCVanKbKVpV6lsx2/RZc4GbiBR1XNm4jvATnUv3uSmOlagrn36E7XxHMvF35CUdjgMIdTz9HOa8IBcx7gr5ovV3nSylx5SYcwsAhApshm6EcES1CW7PWl3YEq+YJ1ie8eU4eHq8+kEMeIX5NowslBg7tNBSDnpZCs9IZ7lIZXJWWR6R7V8Fq7D7dRxkXcFwaZSH5rQeppXVDtNQtMGfgeSsyfw4jcIE6Ca79uF1iYB+cJeWBdpjcrp1NhZFb32ostFNH1eyYoqyLt7UZdAYQFs08hmpG3tNdw0CsqlzHJwxNtdztDc/XcFxV8ITHdsdywLSnr/kHGDNrZg+1mGx6BWoP4+0pbZCHbIoexxR0msCLlSHPaW65aA2qwzUrFgSkYc/UOHugAL48V6aMRn7LyauAKhIy87i4D1Dpv+4B/yAWN6ssVPkCeSmRsVBN5MQ633UaoIOymd9PSGbiRbgUD'};
 const CARD_GROUP_KEYS=['debitPhysical','debitApple','debitXiaomi','debitHuawei','creditPhysical','creditApple','creditXiaomi','creditHuawei','dual','sharedQrHce'];
 const emptyCardCatalog=()=>Object.fromEntries(CARD_GROUP_KEYS.map(key=>[key,[]]));
 let cardCatalog=emptyCardCatalog();
+let catalogUnlockBusy=false;
 
 function sanitizeCardNumber(value){return String(value||'').replace(/[^0-9*]/g,'').slice(0,24);}
 function maskCardNumber(value){
@@ -494,6 +505,27 @@ function normalizeCardCatalog(raw){
   const normalized=emptyCardCatalog();
   CARD_GROUP_KEYS.forEach(key=>{normalized[key]=uniqueCards(source[key]);});
   return normalized;
+}
+function base64Bytes(value){return Uint8Array.from(atob(value),char=>char.charCodeAt(0));}
+async function unlockSharedCardCatalog(){
+  if(catalogUnlockBusy)return;
+  const input=document.getElementById('cardCatalogPin');
+  const button=document.getElementById('cardCatalogUnlockBtn');
+  const pin=(input?.value||'').trim();
+  if(!/^\d{6}$/.test(pin)){showToast('⚠️ 팀 암호 6자리를 입력해주세요.');return;}
+  if(!globalThis.crypto?.subtle){showToast('❌ 이 브라우저에서는 암호 불러오기를 지원하지 않습니다.');return;}
+  catalogUnlockBusy=true;if(button)button.disabled=true;
+  try{
+    const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);
+    const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:base64Bytes(ENCRYPTED_CARD_CATALOG.salt),iterations:ENCRYPTED_CARD_CATALOG.iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
+    const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:base64Bytes(ENCRYPTED_CARD_CATALOG.iv),tagLength:128},key,base64Bytes(ENCRYPTED_CARD_CATALOG.data));
+    const imported=normalizeCardCatalog(JSON.parse(new TextDecoder().decode(plain)));
+    CARD_GROUP_KEYS.forEach(group=>{cardCatalog[group]=uniqueCards([...(cardCatalog[group]||[]),...(imported[group]||[])]);});
+    saveCardCatalog();updateUI();renderScenario();
+    if(input)input.value='';
+    showToast(`✅ 카드정보 ${cardCatalogCount()}개를 불러왔습니다.`);
+  }catch(e){showToast('❌ 팀 암호가 맞지 않습니다.');}
+  finally{catalogUnlockBusy=false;if(button)button.disabled=false;}
 }
 function loadCardCatalog(){
   try{cardCatalog=normalizeCardCatalog(JSON.parse(localStorage.getItem(CARD_CATALOG_KEY)||'{}'));}
