@@ -323,7 +323,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v6.0</div>
+    <div class="main-version">UPI Test Manager v6.1</div>
   </div>
 </div>
 
@@ -486,7 +486,7 @@ let unitUploadSessionId=newUploadSessionId();
 // ══ 로컬 설정 ══
 const STORE_KEY = 'upi_acceptance_v5_app_v1';
 const CARD_CATALOG_KEY=STORE_KEY+'_card_catalog';
-const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'qKJgFWHWEQLgilLWsLKzag==',iv:'VsR9rHC03LGNNtsN',data:'H7JtG/WCir2cquJoc4LMZVnwI8jbNKSmuHIfnMCnLdGpIZ5UC7Y5N4OWUUpq/RDlI1uidpSuOfTcv1zIJeZUr/M40q3lf+Ce0YRtWoF9smL/R5G0yOserUADLn1eQHXuUj3zV0uRk9ixI0fj8BIgV2kL/rNBD3zsRkIAdPVlfroXJYFZ8nFsWGCuoYSlCVanKbKVpV6lsx2/RZc4GbiBR1XNm4jvATnUv3uSmOlagrn36E7XxHMvF35CUdjgMIdTz9HOa8IBcx7gr5ovV3nSylx5SYcwsAhApshm6EcES1CW7PWl3YEq+YJ1ie8eU4eHq8+kEMeIX5NowslBg7tNBSDnpZCs9IZ7lIZXJWWR6R7V8Fq7D7dRxkXcFwaZSH5rQeppXVDtNQtMGfgeSsyfw4jcIE6Ca79uF1iYB+cJeWBdpjcrp1NhZFb32ostFNH1eyYoqyLt7UZdAYQFs08hmpG3tNdw0CsqlzHJwxNtdztDc/XcFxV8ITHdsdywLSnr/kHGDNrZg+1mGx6BWoP4+0pbZCHbIoexxR0msCLlSHPaW65aA2qwzUrFgSkYc/UOHugAL48V6aMRn7LyauAKhIy87i4D1Dpv+4B/yAWN6ssVPkCeSmRsVBN5MQ633UaoIOymd9PSGbiRbgUD'};
+const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'vj74W9GeD1vLGJ5CFzsAQw==',iv:'JH3F1Q8i6IMKrPLF',data:'qAu2weJ5kM8k3fksBjkXPsvwb3oxv1KajkZxkZSpNWLcwoNAbfe/HGYnb2LR6S5ztNKHxYO5PNcrOK2J1B+ByrUdXX378/FAf+RNjXUSlSYbkfHWgYkxxFV1N4tVJe+xg1dz/6BvwXfpRZPZ3TyQ1vOONXKsUr1iE4gtrGMpyH2ssx7+TF9d7ej5BIVviuDWT9DcAbEcBwRw2VFfbIvanbJb8byYnow2nqZDkZcdbbjgKV8sF6JUoK8x1/8f3X+9IjHPLZZwSKbDREfEnM2sIoLSryuG3EIPOK2codFliI3ZS+t/LGhIC7qmvM3cCDhm3MPIqpHyPh3Cl3yFE+3i2zuBheXb+sdUO/YCF9C0x17Q5QcPbHFDVVypXkB9LUdmgLaNCe3N7uWw1epclsxKkvAOufZP6CizblHEGPtaDI47W1gOE05RB9fYKENj788vrwIzeNh79by9MgJFS7QmQULspkxvV1WCgZ3tPHk+pAO36NmuDRCJz4bxUiA5gFp2C1rf9HVXAQVQ+X+j0aKnjE7ADbGinmAvFuSbZbzfr339KVteBNV74dhoqCwD82mUzlHqdhrKKs7TTAw7DMdjPYUKrIEnt7Juz084jmHsGkJ1pPB2mY2hO6cxFudNTnF7HcrFQN4DsGYnoj5ckKJfB+cRkWsLpEdbj/+iC21V5D9M3u8UDC2qKVv6PbgtDcmN+tctKGXC+Y3XFTijmip4fc4GX+LhXYv9dJ72cQImr2OIk+I8RrOMSXgG+49XEftRWZgx10jVxyaPiho='};
 const CARD_GROUP_KEYS=['debitPhysical','debitApple','debitXiaomi','debitHuawei','creditPhysical','creditApple','creditXiaomi','creditHuawei','dual','sharedQrHce'];
 const emptyCardCatalog=()=>Object.fromEntries(CARD_GROUP_KEYS.map(key=>[key,[]]));
 let cardCatalog=emptyCardCatalog();
