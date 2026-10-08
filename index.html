@@ -163,7 +163,8 @@
     .card-direct-input:focus,.card-select:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(0,128,119,0.1);}
     .card-use-btn{padding:10px 11px;border:1px solid var(--teal);border-radius:10px;background:white;color:var(--teal);font-size:11px;font-weight:800;white-space:nowrap;cursor:pointer;}
     .card-use-btn.active{background:var(--teal);color:white;}
-    .card-prev-btn{width:100%;padding:10px;margin-bottom:8px;border:1px dashed var(--blue);border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;}
+    .value-prev-btn{width:100%;padding:10px;margin-top:8px;border:1px dashed var(--blue);border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;}
+    .value-prev-btn:active{transform:scale(0.98);}
     .card-help{font-size:10.5px;color:#82908f;margin-top:7px;line-height:1.45;}
     .card-import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
     .card-import-btn{padding:10px;border:1px solid #ccd7eb;border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;text-align:center;}
@@ -174,7 +175,8 @@
     .card-unlock-btn:disabled{opacity:.55;cursor:wait;}
     .card-import-btn input{display:none;}
     .scenario-card-panel{background:#eef8f7;border:1px solid #c9e4e1;border-radius:10px;padding:10px;}
-    .scenario-card-panel .card-select,.scenario-card-panel .card-prev-btn{margin-bottom:6px;}
+    .scenario-card-panel .card-select{margin-bottom:6px;}
+    .scenario-amount-wrap+.value-prev-btn{margin-top:6px;}
 
     /* 하단 버튼 — 스크롤 흐름 내 인라인 배치 */
     .bottom-bar{
@@ -323,7 +325,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v6.1</div>
+    <div class="main-version">UPI Test Manager v6.2</div>
   </div>
 </div>
 
@@ -398,6 +400,7 @@
         <input type="text" id="amountDisplay" placeholder="0" oninput="formatCurrency(this)" inputmode="numeric">
         <span class="amount-unit">￦</span>
       </div>
+      <button class="value-prev-btn" id="unitPrevAmountBtn" onclick="copyPreviousUnitAmount()" style="display:none;"></button>
       <div class="section-label">기능 지원</div>
       <div class="toggle-grid">
         <div class="toggle-row"><span class="toggle-label">Hotkey</span><button class="toggle-btn state-na" id="hotkey" onclick="toggleStep('hotkey')">N/A</button></div>
@@ -486,10 +489,12 @@ let unitUploadSessionId=newUploadSessionId();
 // ══ 로컬 설정 ══
 const STORE_KEY = 'upi_acceptance_v5_app_v1';
 const CARD_CATALOG_KEY=STORE_KEY+'_card_catalog';
+const RECENT_CARD_KEY=STORE_KEY+'_recent_cards';
 const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'vj74W9GeD1vLGJ5CFzsAQw==',iv:'JH3F1Q8i6IMKrPLF',data:'qAu2weJ5kM8k3fksBjkXPsvwb3oxv1KajkZxkZSpNWLcwoNAbfe/HGYnb2LR6S5ztNKHxYO5PNcrOK2J1B+ByrUdXX378/FAf+RNjXUSlSYbkfHWgYkxxFV1N4tVJe+xg1dz/6BvwXfpRZPZ3TyQ1vOONXKsUr1iE4gtrGMpyH2ssx7+TF9d7ej5BIVviuDWT9DcAbEcBwRw2VFfbIvanbJb8byYnow2nqZDkZcdbbjgKV8sF6JUoK8x1/8f3X+9IjHPLZZwSKbDREfEnM2sIoLSryuG3EIPOK2codFliI3ZS+t/LGhIC7qmvM3cCDhm3MPIqpHyPh3Cl3yFE+3i2zuBheXb+sdUO/YCF9C0x17Q5QcPbHFDVVypXkB9LUdmgLaNCe3N7uWw1epclsxKkvAOufZP6CizblHEGPtaDI47W1gOE05RB9fYKENj788vrwIzeNh79by9MgJFS7QmQULspkxvV1WCgZ3tPHk+pAO36NmuDRCJz4bxUiA5gFp2C1rf9HVXAQVQ+X+j0aKnjE7ADbGinmAvFuSbZbzfr339KVteBNV74dhoqCwD82mUzlHqdhrKKs7TTAw7DMdjPYUKrIEnt7Juz084jmHsGkJ1pPB2mY2hO6cxFudNTnF7HcrFQN4DsGYnoj5ckKJfB+cRkWsLpEdbj/+iC21V5D9M3u8UDC2qKVv6PbgtDcmN+tctKGXC+Y3XFTijmip4fc4GX+LhXYv9dJ72cQImr2OIk+I8RrOMSXgG+49XEftRWZgx10jVxyaPiho='};
 const CARD_GROUP_KEYS=['debitPhysical','debitApple','debitXiaomi','debitHuawei','creditPhysical','creditApple','creditXiaomi','creditHuawei','dual','sharedQrHce'];
 const emptyCardCatalog=()=>Object.fromEntries(CARD_GROUP_KEYS.map(key=>[key,[]]));
 let cardCatalog=emptyCardCatalog();
+let recentCards=emptyCardCatalog();
 let catalogUnlockBusy=false;
 
 function sanitizeCardNumber(value){return String(value||'').replace(/[^0-9*]/g,'').slice(0,24);}
@@ -557,6 +562,27 @@ function getCardOptions(category,method){
   if(group==='sharedQrHce')return uniqueCards([...(cardCatalog.debitPhysical||[]),...(cardCatalog.creditPhysical||[]),...(cardCatalog.sharedQrHce||[])]);
   return group?uniqueCards(cardCatalog[group]||[]):[];
 }
+function getRecentCardOptions(category,method){
+  const group=cardCatalogGroup(category,method);
+  if(!group)return [];
+  const available=getCardOptions(category,method);
+  return uniqueCards(recentCards[group]||[]).filter(card=>available.includes(card)).slice(0,3);
+}
+function getCardOptionView(category,method){
+  const all=getCardOptions(category,method);
+  const recent=getRecentCardOptions(category,method);
+  return [...recent,...all.filter(card=>!recent.includes(card))].map(card=>({card,recent:recent.includes(card)}));
+}
+function saveRecentCards(){
+  try{localStorage.setItem(RECENT_CARD_KEY,JSON.stringify({version:1,groups:recentCards}));}catch(e){}
+}
+function rememberRecentCard(category,method,value){
+  const card=sanitizeCardNumber(value);
+  const group=cardCatalogGroup(category,method);
+  if(!group||card.length<6)return;
+  recentCards[group]=uniqueCards([card,...(recentCards[group]||[]).filter(value=>value!==card)]).slice(0,5);
+  saveRecentCards();
+}
 function rememberCard(category,method,value){
   const card=sanitizeCardNumber(value);
   const group=cardCatalogGroup(category,method);
@@ -590,6 +616,8 @@ function loadLocalSettings(){
     if(!settings || !settings.sheetsUrl) settings={sheetsUrl:DEFAULT_SHEETS_URL};
   }catch(e){}
   loadCardCatalog();
+  try{recentCards=normalizeCardCatalog(JSON.parse(localStorage.getItem(RECENT_CARD_KEY)||'{}'));}
+  catch(e){recentCards=emptyCardCatalog();}
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -731,24 +759,23 @@ function renderUnitCardPanel(){
     panel.innerHTML='<div class="card-panel-empty">카드 구분과 결제 방식을 선택하면 사용 가능한 카드번호가 표시됩니다.</div>';
     return;
   }
-  const options=getCardOptions(record.category,record.subCategory);
-  const previous=currentIdx>0?sanitizeCardNumber(records[currentIdx-1].cardNumber):'';
-  const selectedIndex=options.indexOf(sanitizeCardNumber(record.cardNumber));
-  const optionHtml=options.map((card,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${maskCardNumber(card)}</option>`).join('');
+  const optionView=getCardOptionView(record.category,record.subCategory);
+  const selectedIndex=optionView.findIndex(item=>item.card===sanitizeCardNumber(record.cardNumber));
+  const optionHtml=optionView.map((item,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${item.recent?'최근 사용 · ':''}${maskCardNumber(item.card)}</option>`).join('');
   panel.innerHTML=`
-    ${previous?`<button class="card-prev-btn" onclick="copyPreviousUnitCard()">직전 카드번호와 동일 · ${maskCardNumber(previous)}</button>`:''}
-    ${options.length?`<select class="card-select" onchange="selectUnitCardOption(this.value)"><option value="">카드번호 선택 (${options.length}개)</option>${optionHtml}</select>`:
+    ${optionView.length?`<select class="card-select" onchange="selectUnitCardOption(this.value)"><option value="">카드번호 선택 (${optionView.length}개)</option>${optionHtml}</select>`:
       '<div class="card-panel-empty">등록된 카드정보가 없습니다. 직접 입력하거나 홈 설정에서 카드정보 JSON을 가져오세요.</div>'}
     <div class="card-direct-row">
       <input class="card-direct-input" id="unitCardNumber" type="text" inputmode="text" autocomplete="off" placeholder="카드번호 직접 입력" value="${sanitizeCardNumber(record.cardNumber)}" oninput="setUnitCardNumber(this)" onblur="commitCurrentUnitCard(true)">
     </div>
-    <div class="card-help">직접 입력한 번호는 이 브라우저의 해당 카드 목록에 자동 추가됩니다.</div>`;
+    <div class="card-help">최근 사용한 카드가 현재 카드 구분/결제 방식에 맞을 때 목록 맨 위에 추천됩니다.</div>`;
 }
 function selectUnitCardOption(index){
   const record=records[currentIdx];
-  const options=getCardOptions(record.category,record.subCategory);
+  const options=getCardOptionView(record.category,record.subCategory);
   if(index==='')return;
-  record.cardNumber=options[Number(index)]||'';
+  record.cardNumber=options[Number(index)]?.card||'';
+  rememberRecentCard(record.category,record.subCategory,record.cardNumber);
   updateUI();
 }
 function setUnitCardNumber(input){
@@ -757,14 +784,14 @@ function setUnitCardNumber(input){
 function commitCurrentUnitCard(refresh=false){
   const record=records[currentIdx];
   const saved=rememberCard(record.category,record.subCategory,record.cardNumber);
+  if(saved)rememberRecentCard(record.category,record.subCategory,record.cardNumber);
   if(refresh&&saved)renderUnitCardPanel();
 }
-function copyPreviousUnitCard(){
+function copyPreviousUnitAmount(){
   if(currentIdx<1)return;
-  const previous=sanitizeCardNumber(records[currentIdx-1].cardNumber);
+  const previous=records[currentIdx-1].amount||'';
   if(!previous)return;
-  records[currentIdx].cardNumber=previous;
-  rememberCard(records[currentIdx].category,records[currentIdx].subCategory,previous);
+  records[currentIdx].amount=previous;
   updateUI();
 }
 function updateUI(){
@@ -773,6 +800,10 @@ function updateUI(){
   document.querySelectorAll('.cat-btn').forEach(b=>b.classList.toggle('selected',b.textContent===r.category));
   document.querySelectorAll('.sub-btn').forEach(b=>b.classList.toggle('selected',b.textContent===r.subCategory));
   document.getElementById('amountDisplay').value=(r.amount||'').replace('￦','').replace(/[^0-9,]/g,'');
+  const previousAmount=currentIdx>0?(records[currentIdx-1].amount||''):'';
+  const previousAmountBtn=document.getElementById('unitPrevAmountBtn');
+  previousAmountBtn.style.display=previousAmount?'block':'none';
+  previousAmountBtn.textContent=previousAmount?`직전 금액 사용 · ${previousAmount}`:'';
   document.getElementById('memo').value=r.memo||'';
   document.getElementById('qpsRow').style.display=r.subCategory==='IC 인서트'?'none':'flex';
   ['hotkey','brandSelection','pinOut','pinIn','pinBypass','qpsStatus','status'].forEach(id=>{
@@ -947,7 +978,7 @@ let scenarioHotkey='N';       // 'N' = 핫키X, 'Y' = 핫키O
 let scenarioOpenKey=null;
 let scenarioData={};          // key: `${device}_${hotkey}_${itemId}` -> 테스트 입력값
 let scenarioUploadSessionId=newUploadSessionId();
-let lastScenarioCardNumber='';
+let lastScenarioAmount='';
 
 function scenarioKey(device,tab,id){return device+'_'+tab+'_'+id;}
 function newScenarioEntry(tier){
@@ -967,7 +998,7 @@ function hasScenarioData(){
 function goToScenario(){
   scenarioDevice=SCENARIO_TERMINAL_TYPE;scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
   scenarioUploadSessionId=newUploadSessionId();
-  lastScenarioCardNumber='';
+  lastScenarioAmount='';
   document.getElementById('scenarioStoreName').value='';
   renderScenario();
   goTo('scenario');
@@ -1002,27 +1033,26 @@ function scenarioToggleCell(key,field,label,value,itemId,tier,full){
 
 function scenarioCardPanelHTML(key,item){
   const entry=scenarioData[key]||newScenarioEntry();
-  const options=getCardOptions(item.cardKor,item.method);
-  const selectedIndex=options.indexOf(sanitizeCardNumber(entry.cardNumber));
-  const optionHtml=options.map((card,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${maskCardNumber(card)}</option>`).join('');
-  const previous=sanitizeCardNumber(lastScenarioCardNumber);
+  const optionView=getCardOptionView(item.cardKor,item.method);
+  const selectedIndex=optionView.findIndex(option=>option.card===sanitizeCardNumber(entry.cardNumber));
+  const optionHtml=optionView.map((option,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${option.recent?'최근 사용 · ':''}${maskCardNumber(option.card)}</option>`).join('');
   return `<div class="scenario-card-panel">
-    ${previous?`<button class="card-prev-btn" onclick="event.stopPropagation();usePreviousScenarioCard('${key}','${item.id}')">직전 카드번호와 동일 · ${maskCardNumber(previous)}</button>`:''}
-    ${options.length?`<select class="card-select" onclick="event.stopPropagation()" onchange="selectScenarioCardOption('${key}','${item.id}',this.value)"><option value="">카드번호 선택 (${options.length}개)</option>${optionHtml}</select>`:
+    ${optionView.length?`<select class="card-select" onclick="event.stopPropagation()" onchange="selectScenarioCardOption('${key}','${item.id}',this.value)"><option value="">카드번호 선택 (${optionView.length}개)</option>${optionHtml}</select>`:
       '<div class="card-panel-empty">등록된 카드정보가 없습니다. 직접 입력하거나 홈 설정에서 카드정보 JSON을 가져오세요.</div>'}
     <input class="card-direct-input" type="text" inputmode="text" autocomplete="off" placeholder="카드번호 직접 입력" value="${sanitizeCardNumber(entry.cardNumber)}" onclick="event.stopPropagation()" oninput="setScenarioCardNumber('${key}',this)" onblur="commitScenarioCard('${key}','${item.id}')">
-    <div class="card-help">직접 입력한 번호는 같은 카드/결제방식 목록에 자동 추가됩니다.</div>
+    <div class="card-help">최근 사용한 카드가 현재 카드 구분/결제 방식에 맞을 때 목록 맨 위에 추천됩니다.</div>
   </div>`;
 }
 function selectScenarioCardOption(key,itemId,index){
   if(index==='')return;
   const item=Object.values(SCENARIO_ITEMS).flat().find(candidate=>candidate.id===itemId);
   if(!item)return;
-  const options=getCardOptions(item.cardKor,item.method);
-  const card=options[Number(index)]||'';
+  const options=getCardOptionView(item.cardKor,item.method);
+  const card=options[Number(index)]?.card||'';
   if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
-  scenarioData[key].cardNumber=card;lastScenarioCardNumber=card;
-  rememberCard(item.cardKor,item.method,card);saveScenarioDraft();renderScenario();
+  scenarioData[key].cardNumber=card;
+  if(scenarioData[key].amount)lastScenarioAmount=scenarioData[key].amount;
+  rememberCard(item.cardKor,item.method,card);rememberRecentCard(item.cardKor,item.method,card);saveScenarioDraft();renderScenario();
 }
 function setScenarioCardNumber(key,input){
   const card=sanitizeCardNumber(input.value);input.value=card;
@@ -1033,15 +1063,13 @@ function commitScenarioCard(key,itemId){
   const item=Object.values(SCENARIO_ITEMS).flat().find(candidate=>candidate.id===itemId);
   const entry=scenarioData[key];if(!item||!entry)return;
   const card=sanitizeCardNumber(entry.cardNumber);
-  if(card){entry.cardNumber=card;lastScenarioCardNumber=card;rememberCard(item.cardKor,item.method,card);}
+  if(card){entry.cardNumber=card;if(entry.amount)lastScenarioAmount=entry.amount;rememberCard(item.cardKor,item.method,card);rememberRecentCard(item.cardKor,item.method,card);}
   saveScenarioDraft();renderScenario();
 }
-function usePreviousScenarioCard(key,itemId){
-  const card=sanitizeCardNumber(lastScenarioCardNumber);if(!card)return;
+function usePreviousScenarioAmount(key){
+  if(!lastScenarioAmount)return;
   if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
-  scenarioData[key].cardNumber=card;
-  const item=Object.values(SCENARIO_ITEMS).flat().find(candidate=>candidate.id===itemId);
-  if(item)rememberCard(item.cardKor,item.method,card);
+  scenarioData[key].amount=lastScenarioAmount;
   saveScenarioDraft();renderScenario();
 }
 
@@ -1089,6 +1117,7 @@ function renderScenarioList(tier,items,container,tab=scenarioHotkey){
               <input class="scenario-input" type="text" inputmode="numeric" value="${(entry.amount||'').replace('￦','')}" oninput="setScenarioAmount('${key}',this)">
               <span>￦</span>
             </div>
+            ${lastScenarioAmount&&lastScenarioAmount!==entry.amount?`<button class="value-prev-btn" onclick="event.stopPropagation();usePreviousScenarioAmount('${key}')">직전 금액 사용 · ${lastScenarioAmount}</button>`:''}
           </div>
           <div class="scenario-field-label">기능 지원</div>
           <div class="scenario-toggle-grid">
@@ -1114,7 +1143,7 @@ function setScenarioMemo(key,val){
 function setScenarioAmount(key,el){
   const v=el.value.replace(/[^0-9]/g,'');
   if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
-  if(v){el.value=parseInt(v).toLocaleString('ko-KR');scenarioData[key].amount='￦'+el.value;}
+  if(v){el.value=parseInt(v).toLocaleString('ko-KR');scenarioData[key].amount='￦'+el.value;lastScenarioAmount=scenarioData[key].amount;}
   else{el.value='';scenarioData[key].amount='';}
   saveScenarioDraft();
 }
@@ -1126,6 +1155,7 @@ function cycleScenarioField(key,field,itemId,tier){
   scenarioData[key][field]=s[(s.indexOf(scenarioData[key][field])+1)%3];
   if(field==='status'){
     const entry=scenarioData[key];
+    if(entry.amount)lastScenarioAmount=entry.amount;
     if(entry.status==='Y'&&(!entry.memo||entry.memoAuto)){
       entry.memo=getScenarioAutoResult(getScenarioItem(itemId,tier),tier);
       entry.memoAuto=!!entry.memo;
@@ -1168,8 +1198,8 @@ function saveScenarioDraft(){
   if(!storeName.trim()&&!hasScenarioEntryData()){updateScenarioDraftButton();return;}
   try{
     localStorage.setItem(SCENARIO_DRAFT_KEY,JSON.stringify({
-      version:4,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,
-      scenarioUploadSessionId,lastScenarioCardNumber,savedAt:new Date().toISOString()
+      version:5,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,
+      scenarioUploadSessionId,lastScenarioAmount,savedAt:new Date().toISOString()
     }));
   }catch(e){}
   updateScenarioDraftButton();
@@ -1219,7 +1249,8 @@ function restoreScenarioDraft(){
     scenarioHotkey=['N','Y'].includes(draft.scenarioHotkey)?draft.scenarioHotkey:'N';
     scenarioData=normalizeScenarioDraftData(draft.scenarioData,draft.scenarioDevice);
     scenarioUploadSessionId=draft.scenarioUploadSessionId||newUploadSessionId();
-    lastScenarioCardNumber=sanitizeCardNumber(draft.lastScenarioCardNumber)||'';
+    lastScenarioAmount=String(draft.lastScenarioAmount||'').replace(/[^0-9]/g,'');
+    lastScenarioAmount=lastScenarioAmount?'￦'+parseInt(lastScenarioAmount).toLocaleString('ko-KR'):'';
     document.getElementById('scenarioStoreName').value=draft.storeName||'';
     scenarioOpenKey=null;
     renderScenario();
@@ -1231,7 +1262,7 @@ function resetScenarioDraft(){
   try{localStorage.removeItem(SCENARIO_DRAFT_KEY);}catch(e){}
   scenarioDevice=SCENARIO_TERMINAL_TYPE;scenarioHotkey='N';scenarioOpenKey=null;scenarioData={};
   scenarioUploadSessionId=newUploadSessionId();
-  lastScenarioCardNumber='';
+  lastScenarioAmount='';
   document.getElementById('scenarioStoreName').value='';
   renderScenario();updateScenarioDraftButton();
   showToast('＋ 새 기록을 시작합니다.');
