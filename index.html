@@ -166,6 +166,9 @@
     .value-prev-btn{width:100%;padding:10px;margin-top:8px;border:1px dashed var(--blue);border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;}
     .value-prev-btn:active{transform:scale(0.98);}
     .card-help{font-size:10.5px;color:#82908f;margin-top:7px;line-height:1.45;}
+    .card-match-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+    .card-match-btn{padding:7px 9px;border:1px solid #a9d4cf;border-radius:8px;background:white;color:var(--dark-teal);font-size:11px;font-weight:750;cursor:pointer;}
+    .card-match-message{width:100%;font-size:10.5px;color:#888;line-height:1.4;}
     .card-import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
     .card-import-btn{padding:10px;border:1px solid #ccd7eb;border-radius:10px;background:#f7f9ff;color:var(--blue);font-size:12px;font-weight:750;cursor:pointer;text-align:center;}
     .card-drive-btn{grid-column:1/-1;text-decoration:none;background:#edf7f3;color:#08765f;border-color:#b9ddd3;}
@@ -325,7 +328,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v6.2</div>
+    <div class="main-version">UPI Test Manager v6.3</div>
   </div>
 </div>
 
@@ -490,7 +493,7 @@ let unitUploadSessionId=newUploadSessionId();
 const STORE_KEY = 'upi_acceptance_v5_app_v1';
 const CARD_CATALOG_KEY=STORE_KEY+'_card_catalog';
 const RECENT_CARD_KEY=STORE_KEY+'_recent_cards';
-const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'vj74W9GeD1vLGJ5CFzsAQw==',iv:'JH3F1Q8i6IMKrPLF',data:'qAu2weJ5kM8k3fksBjkXPsvwb3oxv1KajkZxkZSpNWLcwoNAbfe/HGYnb2LR6S5ztNKHxYO5PNcrOK2J1B+ByrUdXX378/FAf+RNjXUSlSYbkfHWgYkxxFV1N4tVJe+xg1dz/6BvwXfpRZPZ3TyQ1vOONXKsUr1iE4gtrGMpyH2ssx7+TF9d7ej5BIVviuDWT9DcAbEcBwRw2VFfbIvanbJb8byYnow2nqZDkZcdbbjgKV8sF6JUoK8x1/8f3X+9IjHPLZZwSKbDREfEnM2sIoLSryuG3EIPOK2codFliI3ZS+t/LGhIC7qmvM3cCDhm3MPIqpHyPh3Cl3yFE+3i2zuBheXb+sdUO/YCF9C0x17Q5QcPbHFDVVypXkB9LUdmgLaNCe3N7uWw1epclsxKkvAOufZP6CizblHEGPtaDI47W1gOE05RB9fYKENj788vrwIzeNh79by9MgJFS7QmQULspkxvV1WCgZ3tPHk+pAO36NmuDRCJz4bxUiA5gFp2C1rf9HVXAQVQ+X+j0aKnjE7ADbGinmAvFuSbZbzfr339KVteBNV74dhoqCwD82mUzlHqdhrKKs7TTAw7DMdjPYUKrIEnt7Juz084jmHsGkJ1pPB2mY2hO6cxFudNTnF7HcrFQN4DsGYnoj5ckKJfB+cRkWsLpEdbj/+iC21V5D9M3u8UDC2qKVv6PbgtDcmN+tctKGXC+Y3XFTijmip4fc4GX+LhXYv9dJ72cQImr2OIk+I8RrOMSXgG+49XEftRWZgx10jVxyaPiho='};
+const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'vqdFc7uCc93aYWFUeFEk0g==',iv:'nh/vn84ciGrmWHCA',data:'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'};
 const CARD_GROUP_KEYS=['debitPhysical','debitApple','debitXiaomi','debitHuawei','creditPhysical','creditApple','creditXiaomi','creditHuawei','dual','sharedQrHce'];
 const emptyCardCatalog=()=>Object.fromEntries(CARD_GROUP_KEYS.map(key=>[key,[]]));
 let cardCatalog=emptyCardCatalog();
@@ -566,12 +569,21 @@ function getRecentCardOptions(category,method){
   const group=cardCatalogGroup(category,method);
   if(!group)return [];
   const available=getCardOptions(category,method);
-  return uniqueCards(recentCards[group]||[]).filter(card=>available.includes(card)).slice(0,3);
+  return uniqueCards(recentCards[group]||[]).filter(card=>available.includes(card)).slice(0,5);
 }
 function getCardOptionView(category,method){
-  const all=getCardOptions(category,method);
   const recent=getRecentCardOptions(category,method);
-  return [...recent,...all.filter(card=>!recent.includes(card))].map(card=>({card,recent:recent.includes(card)}));
+  return recent.map(card=>({card,recent:true}));
+}
+function findCardSuffixMatches(category,method,value){
+  const suffix=String(value||'').replace(/\D/g,'');
+  if(suffix.length!==4)return [];
+  return getCardOptions(category,method).filter(card=>card.replace(/\D/g,'').endsWith(suffix));
+}
+function isCompleteCardNumber(value){return sanitizeCardNumber(value).length>=10;}
+function suffixMatchHTML(matches,handler){
+  if(!matches.length)return '<div class="card-match-message">일치하는 등록 카드가 없습니다. 전체 카드번호를 입력해주세요.</div>';
+  return matches.map((card,index)=>`<button type="button" class="card-match-btn" onclick="${handler(index)}">${maskCardNumber(card)}</button>`).join('');
 }
 function saveRecentCards(){
   try{localStorage.setItem(RECENT_CARD_KEY,JSON.stringify({version:1,groups:recentCards}));}catch(e){}
@@ -763,12 +775,13 @@ function renderUnitCardPanel(){
   const selectedIndex=optionView.findIndex(item=>item.card===sanitizeCardNumber(record.cardNumber));
   const optionHtml=optionView.map((item,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${item.recent?'최근 사용 · ':''}${maskCardNumber(item.card)}</option>`).join('');
   panel.innerHTML=`
-    ${optionView.length?`<select class="card-select" onchange="selectUnitCardOption(this.value)"><option value="">카드번호 선택 (${optionView.length}개)</option>${optionHtml}</select>`:
-      '<div class="card-panel-empty">등록된 카드정보가 없습니다. 직접 입력하거나 홈 설정에서 카드정보 JSON을 가져오세요.</div>'}
+    ${optionView.length?`<select class="card-select" onchange="selectUnitCardOption(this.value)"><option value="">최근 사용 카드 (${optionView.length}개)</option>${optionHtml}</select>`:
+      '<div class="card-panel-empty">최근 사용 카드가 없습니다. 아래에 끝 4자리를 입력하면 등록 카드에서 찾아드립니다.</div>'}
     <div class="card-direct-row">
-      <input class="card-direct-input" id="unitCardNumber" type="text" inputmode="text" autocomplete="off" placeholder="카드번호 직접 입력" value="${sanitizeCardNumber(record.cardNumber)}" oninput="setUnitCardNumber(this)" onblur="commitCurrentUnitCard(true)">
+      <input class="card-direct-input" id="unitCardNumber" type="text" inputmode="text" autocomplete="off" placeholder="끝 4자리 또는 전체 카드번호 입력" value="${sanitizeCardNumber(record.cardNumber)}" oninput="setUnitCardNumber(this)" onblur="commitCurrentUnitCard(true)">
     </div>
-    <div class="card-help">최근 사용한 카드가 현재 카드 구분/결제 방식에 맞을 때 목록 맨 위에 추천됩니다.</div>`;
+    <div class="card-match-list" id="unitCardMatches"></div>
+    <div class="card-help">목록에는 최근 사용 5개만 표시되며, 나머지는 끝 4자리로 검색할 수 있습니다.</div>`;
 }
 function selectUnitCardOption(index){
   const record=records[currentIdx];
@@ -779,7 +792,21 @@ function selectUnitCardOption(index){
   updateUI();
 }
 function setUnitCardNumber(input){
-  const card=sanitizeCardNumber(input.value);input.value=card;records[currentIdx].cardNumber=card;
+  const record=records[currentIdx];
+  const card=sanitizeCardNumber(input.value);input.value=card;record.cardNumber=card;
+  const matchBox=document.getElementById('unitCardMatches');
+  if(card.length!==4){if(matchBox)matchBox.innerHTML='';return;}
+  const matches=findCardSuffixMatches(record.category,record.subCategory,card);
+  if(matches.length===1){
+    record.cardNumber=matches[0];rememberRecentCard(record.category,record.subCategory,matches[0]);updateUI();showToast('✅ 끝 4자리로 카드를 선택했습니다.');return;
+  }
+  if(matchBox)matchBox.innerHTML=suffixMatchHTML(matches,index=>`selectUnitSuffixMatch(${index})`);
+}
+function selectUnitSuffixMatch(index){
+  const record=records[currentIdx];
+  const matches=findCardSuffixMatches(record.category,record.subCategory,record.cardNumber);
+  const card=matches[Number(index)]||'';if(!card)return;
+  record.cardNumber=card;rememberRecentCard(record.category,record.subCategory,card);updateUI();
 }
 function commitCurrentUnitCard(refresh=false){
   const record=records[currentIdx];
@@ -892,8 +919,8 @@ async function uploadAndSave(){
   commitCurrentUnitCard();
   const activeRecords=records.filter(r=>r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo||r.cardNumber);
   if(!activeRecords.length){showToast('⚠️ 테스트 내용을 입력해주세요.');return;}
-  const missingIndex=records.findIndex(r=>(r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo)&&!sanitizeCardNumber(r.cardNumber));
-  if(missingIndex>=0){currentIdx=missingIndex;updateUI();showToast(`⚠️ ${missingIndex+1}번 테스트의 카드번호를 선택하거나 입력해주세요.`);return;}
+  const missingIndex=records.findIndex(r=>(r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo)&&!isCompleteCardNumber(r.cardNumber));
+  if(missingIndex>=0){currentIdx=missingIndex;updateUI();showToast(`⚠️ ${missingIndex+1}번 테스트에서 끝 4자리로 카드를 선택하거나 전체 번호를 입력해주세요.`);return;}
   activeRecords.forEach(r=>rememberCard(r.category,r.subCategory,r.cardNumber));
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
@@ -1037,10 +1064,11 @@ function scenarioCardPanelHTML(key,item){
   const selectedIndex=optionView.findIndex(option=>option.card===sanitizeCardNumber(entry.cardNumber));
   const optionHtml=optionView.map((option,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${option.recent?'최근 사용 · ':''}${maskCardNumber(option.card)}</option>`).join('');
   return `<div class="scenario-card-panel">
-    ${optionView.length?`<select class="card-select" onclick="event.stopPropagation()" onchange="selectScenarioCardOption('${key}','${item.id}',this.value)"><option value="">카드번호 선택 (${optionView.length}개)</option>${optionHtml}</select>`:
-      '<div class="card-panel-empty">등록된 카드정보가 없습니다. 직접 입력하거나 홈 설정에서 카드정보 JSON을 가져오세요.</div>'}
-    <input class="card-direct-input" type="text" inputmode="text" autocomplete="off" placeholder="카드번호 직접 입력" value="${sanitizeCardNumber(entry.cardNumber)}" onclick="event.stopPropagation()" oninput="setScenarioCardNumber('${key}',this)" onblur="commitScenarioCard('${key}','${item.id}')">
-    <div class="card-help">최근 사용한 카드가 현재 카드 구분/결제 방식에 맞을 때 목록 맨 위에 추천됩니다.</div>
+    ${optionView.length?`<select class="card-select" onclick="event.stopPropagation()" onchange="selectScenarioCardOption('${key}','${item.id}',this.value)"><option value="">최근 사용 카드 (${optionView.length}개)</option>${optionHtml}</select>`:
+      '<div class="card-panel-empty">최근 사용 카드가 없습니다. 아래에 끝 4자리를 입력하면 등록 카드에서 찾아드립니다.</div>'}
+    <input class="card-direct-input" type="text" inputmode="text" autocomplete="off" placeholder="끝 4자리 또는 전체 카드번호 입력" value="${sanitizeCardNumber(entry.cardNumber)}" onclick="event.stopPropagation()" oninput="setScenarioCardNumber('${key}','${item.id}',this)" onblur="commitScenarioCard('${key}','${item.id}')">
+    <div class="card-match-list" id="scenarioCardMatches-${key}"></div>
+    <div class="card-help">목록에는 최근 사용 5개만 표시되며, 나머지는 끝 4자리로 검색할 수 있습니다.</div>
   </div>`;
 }
 function selectScenarioCardOption(key,itemId,index){
@@ -1054,10 +1082,26 @@ function selectScenarioCardOption(key,itemId,index){
   if(scenarioData[key].amount)lastScenarioAmount=scenarioData[key].amount;
   rememberCard(item.cardKor,item.method,card);rememberRecentCard(item.cardKor,item.method,card);saveScenarioDraft();renderScenario();
 }
-function setScenarioCardNumber(key,input){
+function setScenarioCardNumber(key,itemId,input){
   const card=sanitizeCardNumber(input.value);input.value=card;
   if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
   scenarioData[key].cardNumber=card;
+  const matchBox=document.getElementById(`scenarioCardMatches-${key}`);
+  if(card.length!==4){if(matchBox)matchBox.innerHTML='';return;}
+  const item=Object.values(SCENARIO_ITEMS).flat().find(candidate=>candidate.id===itemId);if(!item)return;
+  const matches=findCardSuffixMatches(item.cardKor,item.method,card);
+  if(matches.length===1){
+    scenarioData[key].cardNumber=matches[0];rememberRecentCard(item.cardKor,item.method,matches[0]);saveScenarioDraft();renderScenario();showToast('✅ 끝 4자리로 카드를 선택했습니다.');return;
+  }
+  if(matchBox)matchBox.innerHTML=suffixMatchHTML(matches,index=>`event.stopPropagation();selectScenarioSuffixMatch('${key}','${itemId}',${index})`);
+}
+function selectScenarioSuffixMatch(key,itemId,index){
+  const item=Object.values(SCENARIO_ITEMS).flat().find(candidate=>candidate.id===itemId);
+  const entry=scenarioData[key];if(!item||!entry)return;
+  const matches=findCardSuffixMatches(item.cardKor,item.method,entry.cardNumber);
+  const card=matches[Number(index)]||'';if(!card)return;
+  entry.cardNumber=card;if(entry.amount)lastScenarioAmount=entry.amount;
+  rememberRecentCard(item.cardKor,item.method,card);saveScenarioDraft();renderScenario();
 }
 function commitScenarioCard(key,itemId){
   const item=Object.values(SCENARIO_ITEMS).flat().find(candidate=>candidate.id===itemId);
@@ -1304,8 +1348,8 @@ async function uploadScenario(){
   if(!settings.sheetsUrl){showToast('⚠️ 설정에서 Sheets URL을 먼저 입력해주세요.');return;}
   const enriched=buildScenarioRecords();
   if(!enriched.length){showToast('⚠️ 테스트된 항목이 없습니다.');return;}
-  const missingCard=enriched.findIndex(record=>!record.cardNumber);
-  if(missingCard>=0){showToast(`⚠️ 카드번호가 없는 시나리오가 있습니다. 각 항목에서 선택하거나 입력해주세요.`);return;}
+  const missingCard=enriched.findIndex(record=>!isCompleteCardNumber(record.cardNumber));
+  if(missingCard>=0){showToast(`⚠️ 카드번호가 완성되지 않은 시나리오가 있습니다. 끝 4자리로 선택하거나 전체 번호를 입력해주세요.`);return;}
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
   const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
