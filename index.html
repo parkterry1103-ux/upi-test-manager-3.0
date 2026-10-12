@@ -328,7 +328,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v6.3</div>
+    <div class="main-version">UPI Test Manager v6.4</div>
   </div>
 </div>
 
@@ -493,10 +493,13 @@ let unitUploadSessionId=newUploadSessionId();
 const STORE_KEY = 'upi_acceptance_v5_app_v1';
 const CARD_CATALOG_KEY=STORE_KEY+'_card_catalog';
 const RECENT_CARD_KEY=STORE_KEY+'_recent_cards';
-const ENCRYPTED_CARD_CATALOG={version:1,iterations:600000,salt:'vqdFc7uCc93aYWFUeFEk0g==',iv:'nh/vn84ciGrmWHCA',data:'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'};
-const CARD_GROUP_KEYS=['debitPhysical','debitApple','debitXiaomi','debitHuawei','creditPhysical','creditApple','creditXiaomi','creditHuawei','dual','sharedQrHce'];
+const ENCRYPTED_CARD_CATALOG={version:2,iterations:600000,salt:'4hE/HUnP7Xr5BuXpvEZ8ow==',iv:'R33zKa9M0fEd6Ue+',data:'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'};
+const CARD_GROUP_KEYS=['debitPhysical','debitApple','debitXiaomi','debitHuawei','creditPhysical','creditApple','creditXiaomi','creditHuawei','dual','dualApple','dualXiaomi','dualHuawei','sharedQrHce'];
+const WALLET_GROUP_KEYS=['debitApple','debitXiaomi','debitHuawei','creditApple','creditXiaomi','creditHuawei','dualApple','dualXiaomi','dualHuawei'];
 const emptyCardCatalog=()=>Object.fromEntries(CARD_GROUP_KEYS.map(key=>[key,[]]));
+const emptyTokenMappings=()=>Object.fromEntries(WALLET_GROUP_KEYS.map(key=>[key,{}]));
 let cardCatalog=emptyCardCatalog();
+let cardTokenMappings=emptyTokenMappings();
 let recentCards=emptyCardCatalog();
 let catalogUnlockBusy=false;
 
@@ -514,6 +517,18 @@ function normalizeCardCatalog(raw){
   CARD_GROUP_KEYS.forEach(key=>{normalized[key]=uniqueCards(source[key]);});
   return normalized;
 }
+function normalizeTokenMappings(raw){
+  const source=raw&&typeof raw==='object'&&raw.tokenMappings&&typeof raw.tokenMappings==='object'?raw.tokenMappings:{};
+  const normalized=emptyTokenMappings();
+  WALLET_GROUP_KEYS.forEach(group=>{
+    const mapping=source[group]&&typeof source[group]==='object'?source[group]:{};
+    Object.entries(mapping).forEach(([physical,token])=>{
+      const card=sanitizeCardNumber(physical),mapped=sanitizeCardNumber(token);
+      if(card.length>=10&&mapped.length>=6)normalized[group][card]=mapped;
+    });
+  });
+  return normalized;
+}
 function base64Bytes(value){return Uint8Array.from(atob(value),char=>char.charCodeAt(0));}
 async function unlockSharedCardCatalog(){
   if(catalogUnlockBusy)return;
@@ -527,8 +542,13 @@ async function unlockSharedCardCatalog(){
     const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveKey']);
     const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:base64Bytes(ENCRYPTED_CARD_CATALOG.salt),iterations:ENCRYPTED_CARD_CATALOG.iterations,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['decrypt']);
     const plain=await crypto.subtle.decrypt({name:'AES-GCM',iv:base64Bytes(ENCRYPTED_CARD_CATALOG.iv),tagLength:128},key,base64Bytes(ENCRYPTED_CARD_CATALOG.data));
-    const imported=normalizeCardCatalog(JSON.parse(new TextDecoder().decode(plain)));
-    CARD_GROUP_KEYS.forEach(group=>{cardCatalog[group]=uniqueCards([...(cardCatalog[group]||[]),...(imported[group]||[])]);});
+    const decoded=JSON.parse(new TextDecoder().decode(plain));
+    const imported=normalizeCardCatalog(decoded);
+    const importedMappings=normalizeTokenMappings(decoded);
+    CARD_GROUP_KEYS.forEach(group=>{
+      cardCatalog[group]=WALLET_GROUP_KEYS.includes(group)?imported[group]:uniqueCards([...(cardCatalog[group]||[]),...(imported[group]||[])]);
+    });
+    cardTokenMappings=importedMappings;
     saveCardCatalog();updateUI();renderScenario();
     if(input)input.value='';
     showToast(`✅ 카드정보 ${cardCatalogCount()}개를 불러왔습니다.`);
@@ -536,12 +556,15 @@ async function unlockSharedCardCatalog(){
   finally{catalogUnlockBusy=false;if(button)button.disabled=false;}
 }
 function loadCardCatalog(){
-  try{cardCatalog=normalizeCardCatalog(JSON.parse(localStorage.getItem(CARD_CATALOG_KEY)||'{}'));}
-  catch(e){cardCatalog=emptyCardCatalog();}
+  try{
+    const saved=JSON.parse(localStorage.getItem(CARD_CATALOG_KEY)||'{}');
+    cardCatalog=normalizeCardCatalog(saved);cardTokenMappings=normalizeTokenMappings(saved);
+    if(Number(saved.version||0)<2)WALLET_GROUP_KEYS.forEach(group=>{cardCatalog[group]=[];});
+  }catch(e){cardCatalog=emptyCardCatalog();cardTokenMappings=emptyTokenMappings();}
   updateCardCatalogStatus();
 }
 function saveCardCatalog(){
-  try{localStorage.setItem(CARD_CATALOG_KEY,JSON.stringify({version:1,groups:cardCatalog}));}catch(e){}
+  try{localStorage.setItem(CARD_CATALOG_KEY,JSON.stringify({version:2,groups:cardCatalog,tokenMappings:cardTokenMappings}));}catch(e){}
   updateCardCatalogStatus();
 }
 function cardCatalogCount(){return uniqueCards(CARD_GROUP_KEYS.flatMap(key=>cardCatalog[key]||[])).length;}
@@ -551,7 +574,13 @@ function updateCardCatalogStatus(){
 }
 function cardCatalogGroup(category,method){
   if(['QR CPM','HCE(Android)'].includes(method))return 'sharedQrHce';
-  if(category==='듀얼카드')return 'dual';
+  if(category==='듀얼카드'){
+    if(['IC 인서트','실물 NFC'].includes(method))return 'dual';
+    if(method==='ApplePay')return 'dualApple';
+    if(method==='XiaomiPay')return 'dualXiaomi';
+    if(method==='HuaweiPay')return 'dualHuawei';
+    return '';
+  }
   const prefix=category==='체크카드'?'debit':category==='신용카드'?'credit':'';
   if(!prefix)return '';
   if(['IC 인서트','실물 NFC'].includes(method))return prefix+'Physical';
@@ -564,6 +593,17 @@ function getCardOptions(category,method){
   const group=cardCatalogGroup(category,method);
   if(group==='sharedQrHce')return uniqueCards([...(cardCatalog.debitPhysical||[]),...(cardCatalog.creditPhysical||[]),...(cardCatalog.sharedQrHce||[])]);
   return group?uniqueCards(cardCatalog[group]||[]):[];
+}
+function isWalletMethod(method){return ['ApplePay','XiaomiPay','HuaweiPay'].includes(method);}
+function storedCardNumber(category,method,value){
+  const card=sanitizeCardNumber(value);if(!card)return '';
+  if(!isWalletMethod(method))return card;
+  const group=cardCatalogGroup(category,method);
+  return sanitizeCardNumber(cardTokenMappings[group]?.[card]||'');
+}
+function isRecordCardReady(category,method,value){
+  const card=sanitizeCardNumber(value);
+  return isCompleteCardNumber(card)&&(!isWalletMethod(method)||!!storedCardNumber(category,method,card));
 }
 function getRecentCardOptions(category,method){
   const group=cardCatalogGroup(category,method);
@@ -591,7 +631,7 @@ function saveRecentCards(){
 function rememberRecentCard(category,method,value){
   const card=sanitizeCardNumber(value);
   const group=cardCatalogGroup(category,method);
-  if(!group||card.length<6)return;
+  if(!group||card.length<6||!getCardOptions(category,method).includes(card))return;
   recentCards[group]=uniqueCards([card,...(recentCards[group]||[]).filter(value=>value!==card)]).slice(0,5);
   saveRecentCards();
 }
@@ -599,6 +639,7 @@ function rememberCard(category,method,value){
   const card=sanitizeCardNumber(value);
   const group=cardCatalogGroup(category,method);
   if(!group||card.length<6)return false;
+  if(isWalletMethod(method)&&!storedCardNumber(category,method,card))return false;
   if(getCardOptions(category,method).includes(card))return true;
   cardCatalog[group]=uniqueCards([...(cardCatalog[group]||[]),card]);
   saveCardCatalog();
@@ -608,15 +649,18 @@ async function importCardCatalogFile(input){
   const file=input.files&&input.files[0];
   if(!file)return;
   try{
-    const imported=normalizeCardCatalog(JSON.parse(await file.text()));
-    CARD_GROUP_KEYS.forEach(key=>{cardCatalog[key]=uniqueCards([...(cardCatalog[key]||[]),...(imported[key]||[])]);});
+    const decoded=JSON.parse(await file.text());
+    const imported=normalizeCardCatalog(decoded),importedMappings=normalizeTokenMappings(decoded);
+    const importableGroups=Number(decoded.version||0)>=2?CARD_GROUP_KEYS:['debitPhysical','creditPhysical','dual','sharedQrHce'];
+    importableGroups.forEach(key=>{cardCatalog[key]=uniqueCards([...(cardCatalog[key]||[]),...(imported[key]||[])]);});
+    WALLET_GROUP_KEYS.forEach(group=>{cardTokenMappings[group]={...(cardTokenMappings[group]||{}),...(importedMappings[group]||{})};});
     saveCardCatalog();updateUI();renderScenario();
     showToast(`✅ 카드정보 ${cardCatalogCount()}개를 불러왔습니다.`);
   }catch(e){showToast('❌ 카드정보 JSON 파일을 확인해주세요.');}
   finally{input.value='';}
 }
 function exportCardCatalog(){
-  const blob=new Blob([JSON.stringify({version:1,groups:cardCatalog},null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify({version:2,groups:cardCatalog,tokenMappings:cardTokenMappings},null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   a.href=url;a.download='UPI-card-catalog.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),500);
   showToast('📥 카드정보 파일이 저장되었습니다. 공개 저장소에는 올리지 마세요.');
@@ -894,12 +938,14 @@ function updateSumDetail(idx){
 function saveExcel(){
   commitCurrentUnitCard();
   const sn=document.getElementById('storeName').value||'테스트';
+  const incompleteIndex=records.findIndex(r=>(r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo)&&!isRecordCardReady(r.category,r.subCategory,r.cardNumber));
+  if(incompleteIndex>=0){currentIdx=incompleteIndex;updateUI();showToast(`⚠️ ${incompleteIndex+1}번 테스트의 카드번호 또는 Token 연결을 확인해주세요.`);return;}
   const cardTypeEn=c=>c==='체크카드'?'Debit':c==='신용카드'?'Credit':c==='듀얼카드'?'Dual':c;
   const na=v=>(!v||v==='N/A')?'':v;
   const headers=["Number","Date","Merchant","CardNumber","CardType","Transaction Amount","Transaction Type","Hotkey","Brand Selection","PIN출력","PIN입력","PIN Bypass","QPS","Successful/Failed","Memo"];
   const dataRows=records.map((r,i)=>[
     i+1, new Date().toISOString().split('T')[0], sn,
-    r.cardNumber||'',
+    storedCardNumber(r.category,r.subCategory,r.cardNumber),
     cardTypeEn(r.category), r.amount, r.subCategory,
     na(r.hotkey), na(r.brandSelection), na(r.pinOut), na(r.pinIn),
     na(r.pinBypass), na(r.qpsStatus), na(r.status), r.memo
@@ -919,8 +965,8 @@ async function uploadAndSave(){
   commitCurrentUnitCard();
   const activeRecords=records.filter(r=>r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo||r.cardNumber);
   if(!activeRecords.length){showToast('⚠️ 테스트 내용을 입력해주세요.');return;}
-  const missingIndex=records.findIndex(r=>(r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo)&&!isCompleteCardNumber(r.cardNumber));
-  if(missingIndex>=0){currentIdx=missingIndex;updateUI();showToast(`⚠️ ${missingIndex+1}번 테스트에서 끝 4자리로 카드를 선택하거나 전체 번호를 입력해주세요.`);return;}
+  const missingIndex=records.findIndex(r=>(r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo)&&!isRecordCardReady(r.category,r.subCategory,r.cardNumber));
+  if(missingIndex>=0){currentIdx=missingIndex;updateUI();showToast(`⚠️ ${missingIndex+1}번 테스트의 카드번호 또는 Token 연결을 확인해주세요.`);return;}
   activeRecords.forEach(r=>rememberCard(r.category,r.subCategory,r.cardNumber));
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
@@ -936,7 +982,7 @@ async function uploadAndSave(){
     qpsStatus      : r.qpsStatus      || 'N/A',
     status         : r.status         || 'N/A',
     memo           : r.memo           || '',
-    cardNumber     : sanitizeCardNumber(r.cardNumber)
+    cardNumber     : storedCardNumber(r.category,r.subCategory,r.cardNumber)
   }));
   const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
   try{showUploadResult((await saveSessionOnce(payload,unitUploadSessionId)).state);}
@@ -1348,11 +1394,12 @@ async function uploadScenario(){
   if(!settings.sheetsUrl){showToast('⚠️ 설정에서 Sheets URL을 먼저 입력해주세요.');return;}
   const enriched=buildScenarioRecords();
   if(!enriched.length){showToast('⚠️ 테스트된 항목이 없습니다.');return;}
-  const missingCard=enriched.findIndex(record=>!isCompleteCardNumber(record.cardNumber));
-  if(missingCard>=0){showToast(`⚠️ 카드번호가 완성되지 않은 시나리오가 있습니다. 끝 4자리로 선택하거나 전체 번호를 입력해주세요.`);return;}
+  const missingCard=enriched.findIndex(record=>!isRecordCardReady(record.category,record.subCategory,record.cardNumber));
+  if(missingCard>=0){showToast(`⚠️ 카드번호 또는 Token 연결이 완성되지 않은 시나리오가 있습니다.`);return;}
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
-  const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
+  const storedRecords=enriched.map(record=>({...record,cardNumber:storedCardNumber(record.category,record.subCategory,record.cardNumber)}));
+  const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:storedRecords};
   try{showUploadResult((await saveSessionOnce(payload,scenarioUploadSessionId)).state);}
   catch(e){showUploadResult('uncertain');}
   finally{isBusy=false;}
@@ -1362,11 +1409,13 @@ function saveScenarioExcel(){
   const sn=document.getElementById('scenarioStoreName').value||'테스트';
   const enriched=buildScenarioRecords();
   if(!enriched.length){showToast('⚠️ 테스트된 항목이 없습니다.');return;}
+  const incomplete=enriched.find(record=>!isRecordCardReady(record.category,record.subCategory,record.cardNumber));
+  if(incomplete){showToast('⚠️ 카드번호 또는 Token 연결이 완성되지 않은 시나리오가 있습니다.');return;}
   const cardTypeEn=c=>c==='체크카드'?'Debit':c==='신용카드'?'Credit':c==='듀얼카드'?'Dual':c;
   const na=v=>(!v||v==='N/A')?'':v;
   const headers=["Number","Date","Merchant","POS Type","CardNumber","CardType","Transaction Amount","Transaction Type","Hotkey","Brand Selection","PIN출력","PIN입력","PIN Bypass","QPS","Successful/Failed","Memo"];
   const dataRows=enriched.map((r,i)=>[
-    i+1, new Date().toISOString().split('T')[0], sn, r.terminalType, r.cardNumber, cardTypeEn(r.category), r.amount, r.subCategory,
+    i+1, new Date().toISOString().split('T')[0], sn, r.terminalType, storedCardNumber(r.category,r.subCategory,r.cardNumber), cardTypeEn(r.category), r.amount, r.subCategory,
     na(r.hotkey), na(r.brandSelection), na(r.pinOut), na(r.pinIn), na(r.pinBypass), na(r.qpsStatus), na(r.status), r.memo
   ]);
   const ws=XLSX.utils.aoa_to_sheet([headers,...dataRows]);
