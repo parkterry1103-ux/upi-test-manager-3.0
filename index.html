@@ -328,7 +328,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v6.7</div>
+    <div class="main-version">UPI Test Manager v6.8</div>
   </div>
 </div>
 
@@ -605,6 +605,10 @@ function storedCardNumber(category,method,value){
   if(!isWalletMethod(method))return card;
   const group=cardCatalogGroup(category,method);
   return sanitizeCardNumber(cardTokenMappings[group]?.[card]||card);
+}
+function sheetsCardNumber(category,method,value){
+  const card=storedCardNumber(category,method,value);
+  return card?`="${card}"`:'';
 }
 function isRecordCardReady(category,method,value){
   const card=sanitizeCardNumber(value);
@@ -942,6 +946,16 @@ function updateSumDetail(idx){
 }
 
 // ══ 엑셀 (건별 테스트) ══
+function formatExcelCardNumberColumn(ws,rowCount,columnIndex){
+  const column=XLSX.utils.encode_col(columnIndex);
+  for(let row=2;row<=rowCount+1;row++){
+    const cell=ws[`${column}${row}`];
+    if(!cell)continue;
+    cell.v=String(cell.v??'');cell.t='s';cell.z='@';
+  }
+  ws['!cols']=ws['!cols']||[];
+  ws['!cols'][columnIndex]={...(ws['!cols'][columnIndex]||{}),wch:24};
+}
 function saveExcel(){
   commitCurrentUnitCard();
   const sn=document.getElementById('storeName').value||'테스트';
@@ -956,6 +970,7 @@ function saveExcel(){
     na(r.pinBypass), na(r.qpsStatus), na(r.status), r.memo
   ]);
   const ws=XLSX.utils.aoa_to_sheet([headers,...dataRows]);
+  formatExcelCardNumberColumn(ws,dataRows.length,3);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'UPI_Report');
   XLSX.writeFile(wb,`${sn}_UPI_Report.xlsx`);
   showToast('📥 엑셀 파일이 저장되었습니다.');
@@ -985,7 +1000,7 @@ async function uploadAndSave(){
     qpsStatus      : r.qpsStatus      || 'N/A',
     status         : r.status         || 'N/A',
     memo           : r.memo           || '',
-    cardNumber     : storedCardNumber(r.category,r.subCategory,r.cardNumber)
+    cardNumber     : sheetsCardNumber(r.category,r.subCategory,r.cardNumber)
   }));
   const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
   try{showUploadResult((await saveSessionOnce(payload,unitUploadSessionId)).state);}
@@ -1400,7 +1415,7 @@ async function uploadScenario(){
   if(!enriched.length){showToast('⚠️ 테스트된 항목이 없습니다.');return;}
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
-  const storedRecords=enriched.map(record=>({...record,cardNumber:storedCardNumber(record.category,record.subCategory,record.cardNumber)}));
+  const storedRecords=enriched.map(record=>({...record,cardNumber:sheetsCardNumber(record.category,record.subCategory,record.cardNumber)}));
   const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:storedRecords};
   try{showUploadResult((await saveSessionOnce(payload,scenarioUploadSessionId)).state);}
   catch(e){showUploadResult('uncertain');}
@@ -1419,6 +1434,7 @@ function saveScenarioExcel(){
     na(r.hotkey), na(r.brandSelection), na(r.pinOut), na(r.pinIn), na(r.pinBypass), na(r.qpsStatus), na(r.status), r.memo
   ]);
   const ws=XLSX.utils.aoa_to_sheet([headers,...dataRows]);
+  formatExcelCardNumberColumn(ws,dataRows.length,4);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'UPI_Scenario');
   XLSX.writeFile(wb,`${sn}_UPI_Scenario.xlsx`);
   showToast('📥 엑셀 파일이 저장되었습니다.');
