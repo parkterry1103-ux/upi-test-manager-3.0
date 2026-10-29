@@ -123,6 +123,11 @@
     .scenario-toggle-grid .toggle-btn{width:42px;}
     .scenario-memo-input{margin-top:2px;padding:8px 10px;font-size:12px;color:#555;background:white;}
     .scenario-memo-input::placeholder{color:#bbb;}
+    .result-message-title{font-size:12px;font-weight:700;color:#555;margin:10px 0 7px;}
+    .result-message-options{display:flex;flex-wrap:wrap;gap:7px;}
+    .result-message-chip{border:1px solid #eccaca;background:white;color:#593737;border-radius:12px;padding:7px 11px;font-size:12px;font-family:inherit;cursor:pointer;transition:var(--tr);}
+    .result-message-chip:active{transform:scale(0.96);}
+    .result-message-chip.active{border-color:var(--blue);background:#eef4ff;color:var(--blue);font-weight:700;box-shadow:0 2px 7px rgba(0,51,141,0.12);}
 
     /* 테스트 입력 — 하단 버튼 공간 불필요 (인라인 배치) */
     #screen-test .container{padding-bottom:0;}
@@ -328,7 +333,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v6.9</div>
+    <div class="main-version">UPI Test Manager v7.0</div>
   </div>
 </div>
 
@@ -415,7 +420,9 @@
         <div class="toggle-row"><span class="toggle-label">승인 결과</span><button class="toggle-btn state-na" id="status" onclick="toggleStep('status')">N/A</button></div>
       </div>
       <div class="section-label">기타사항</div>
-      <textarea id="memo" rows="3" placeholder="메모 입력" oninput="setVal('memo',this.value)"></textarea>
+      <textarea id="memo" rows="3" placeholder="결제 후 표시된 문구 또는 메모 입력" oninput="setVal('memo',this.value);renderUnitResultMessages()"></textarea>
+      <div class="result-message-title">자주 쓰는 오류 안내문구</div>
+      <div class="result-message-options" id="unitResultMessageChips"></div>
       <div class="section-label">카드번호</div>
       <div class="card-panel" id="unitCardPanel"></div>
       <div class="bottom-bar">
@@ -484,6 +491,7 @@
 const DEFAULT_SHEETS_URL='https://script.google.com/macros/s/AKfycbydqb_j_hzYQpJPUvn_EsoDqJPeQDewwxbtRM3v45S0w7rwcMgp1s3koEhfdXimh4A7eA/exec';
 let settings={sheetsUrl:DEFAULT_SHEETS_URL};
 const initRecord=()=>({category:'',subCategory:'',amount:'',hotkey:'N/A',brandSelection:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qpsStatus:'N/A',status:'N/A',memo:'',cardNumber:''});
+const COMMON_RESULT_MESSAGES=['한도초과','금액오류','결제실패','카드사 전화요망','不支持','不支持nfc','不支持nfc，见视频','没有填写密码的地方'];
 let records=[initRecord()], currentIdx=0, screenHistory=['main'];
 let isBusy=false;
 const newUploadSessionId=()=>globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -876,6 +884,21 @@ function copyPreviousUnitAmount(){
   records[currentIdx].amount=previous;
   updateUI();
 }
+function resultMessageButtonsHTML(value,selectHandler,customHandler){
+  const commonIndex=COMMON_RESULT_MESSAGES.indexOf(value||'');
+  const button=(label,index,active)=>`<button type="button" class="result-message-chip ${active?'active':''}" onclick="${selectHandler.replace('__INDEX__',index)}">${label}</button>`;
+  return button('표시 문구 없음',-1,!value)+
+    COMMON_RESULT_MESSAGES.map((message,index)=>button(message,index,index===commonIndex)).join('')+
+    `<button type="button" class="result-message-chip ${value&&commonIndex<0?'active':''}" onclick="${customHandler}">기타 · 직접 입력</button>`;
+}
+function renderUnitResultMessages(){
+  const container=document.getElementById('unitResultMessageChips');if(!container)return;
+  container.innerHTML=resultMessageButtonsHTML(records[currentIdx].memo||'','setUnitResultMessage(__INDEX__)',"document.getElementById('memo').focus()");
+}
+function setUnitResultMessage(index){
+  records[currentIdx].memo=Number(index)===-1?'':(COMMON_RESULT_MESSAGES[Number(index)]||'');
+  updateUI();
+}
 function updateUI(){
   renderTabs();
   const r=records[currentIdx];
@@ -887,6 +910,7 @@ function updateUI(){
   previousAmountBtn.style.display=previousAmount?'block':'none';
   previousAmountBtn.textContent=previousAmount?`직전 금액 사용 · ${previousAmount}`:'';
   document.getElementById('memo').value=r.memo||'';
+  renderUnitResultMessages();
   document.getElementById('qpsRow').style.display=r.subCategory==='IC 인서트'?'none':'flex';
   ['hotkey','brandSelection','pinOut','pinIn','pinBypass','qpsStatus','status'].forEach(id=>{
     const btn=document.getElementById(id);btn.textContent=r[id];
@@ -1231,7 +1255,9 @@ function renderScenarioList(tier,items,container,tab=scenarioHotkey){
           <div class="scenario-toggle-grid">
             ${grid}
           </div>
-          <input class="scenario-input scenario-memo-input" type="text" placeholder="결과 메모 (Y 선택 시 한도초과 자동 입력)" value="${entry.memo||''}" oninput="setScenarioMemo('${key}',this.value)">
+          <input class="scenario-input scenario-memo-input" id="scenarioMemo-${key}" type="text" placeholder="결제 후 표시된 문구 또는 메모 입력" value="${entry.memo||''}" oninput="setScenarioMemo('${key}',this.value)">
+          <div class="result-message-title">자주 쓰는 오류 안내문구</div>
+          <div class="result-message-options">${resultMessageButtonsHTML(entry.memo||'',`selectScenarioResultMessage('${key}',__INDEX__)`, `document.getElementById('scenarioMemo-${key}').focus()` )}</div>
         </div>
       </div>
     </div>`;
@@ -1248,6 +1274,12 @@ function setScenarioMemo(key,val){
   scenarioData[key].memo=val;
   scenarioData[key].memoAuto=false;
   saveScenarioDraft();
+}
+function selectScenarioResultMessage(key,index){
+  if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
+  scenarioData[key].memo=Number(index)===-1?'':(COMMON_RESULT_MESSAGES[Number(index)]||'');
+  scenarioData[key].memoAuto=false;
+  saveScenarioDraft();renderScenario();
 }
 function setScenarioAmount(key,el){
   const v=el.value.replace(/[^0-9]/g,'');
