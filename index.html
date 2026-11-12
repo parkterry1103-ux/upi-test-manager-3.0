@@ -128,6 +128,16 @@
     .result-message-chip{border:1px solid #eccaca;background:white;color:#593737;border-radius:12px;padding:7px 11px;font-size:12px;font-family:inherit;cursor:pointer;transition:var(--tr);}
     .result-message-chip:active{transform:scale(0.96);}
     .result-message-chip.active{border-color:var(--blue);background:#eef4ff;color:var(--blue);font-weight:700;box-shadow:0 2px 7px rgba(0,51,141,0.12);}
+    .photo-panel{border:1px dashed #b8c7df;background:#f8fbff;border-radius:14px;padding:12px;}
+    .photo-file-input{display:none;}
+    .photo-add-btn,.photo-remove-btn{border:none;border-radius:10px;padding:9px 12px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;}
+    .photo-add-btn{background:#eaf2ff;color:var(--blue);}
+    .photo-remove-btn{background:#fff0f0;color:var(--dark-red);}
+    .photo-preview-wrap{display:flex;align-items:center;gap:10px;}
+    .photo-preview{width:92px;height:68px;object-fit:cover;border-radius:9px;border:1px solid #d8e0eb;background:#eee;}
+    .photo-actions{display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;}
+    .photo-status{font-size:12px;font-weight:700;color:#3f5878;}
+    .photo-help{font-size:11px;color:#8a96a8;margin-top:7px;line-height:1.45;}
 
     /* 테스트 입력 — 하단 버튼 공간 불필요 (인라인 배치) */
     #screen-test .container{padding-bottom:0;}
@@ -333,7 +343,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.1</div>
+    <div class="main-version">UPI Test Manager v7.2</div>
   </div>
 </div>
 
@@ -423,6 +433,8 @@
       <textarea id="memo" rows="3" placeholder="결제 후 표시된 문구 또는 메모 입력" oninput="setVal('memo',this.value);renderUnitResultMessages()"></textarea>
       <div class="result-message-title">자주 쓰는 오류 안내문구</div>
       <div class="result-message-options" id="unitResultMessageChips"></div>
+      <div class="section-label">결제 화면 사진 <span style="font-weight:400;color:#999;">(선택)</span></div>
+      <div class="photo-panel" id="unitPhotoPanel"></div>
       <div class="section-label">카드번호</div>
       <div class="card-panel" id="unitCardPanel"></div>
       <div class="bottom-bar">
@@ -490,10 +502,11 @@
 // ══ 상태 (건별 테스트) ══
 const DEFAULT_SHEETS_URL='https://script.google.com/macros/s/AKfycbydqb_j_hzYQpJPUvn_EsoDqJPeQDewwxbtRM3v45S0w7rwcMgp1s3koEhfdXimh4A7eA/exec';
 let settings={sheetsUrl:DEFAULT_SHEETS_URL};
-const initRecord=()=>({category:'',subCategory:'',amount:'',hotkey:'N/A',brandSelection:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qpsStatus:'N/A',status:'N/A',memo:'',cardNumber:''});
+const initRecord=()=>({category:'',subCategory:'',amount:'',hotkey:'N/A',brandSelection:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qpsStatus:'N/A',status:'N/A',memo:'',cardNumber:'',photoData:'',photoName:''});
 const COMMON_RESULT_MESSAGES=['한도초과','금액오류','결제실패','카드사 전화요망','不支持','不支持nfc','不支持nfc，见视频','没有填写密码的地方'];
 let records=[initRecord()], currentIdx=0, screenHistory=['main'];
 let isBusy=false;
+let pendingPhotos=0;
 const newUploadSessionId=()=>globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 let unitUploadSessionId=newUploadSessionId();
 
@@ -732,16 +745,20 @@ async function uploadReceiptKey(payload,sessionId,url){
 async function saveSessionOnce(payload,sessionId){
   const url=settings.sheetsUrl;
   const key=await uploadReceiptKey(payload,sessionId,url);
+  if(payload.records.some(record=>record.photoData)){
+    const capability=await sheetsGet('capabilities');
+    if(!capability?.photos)return {state:'photo-unsupported'};
+  }
   const send=async()=>{
     try{
       const receipt=localStorage.getItem(key);
       if(receipt)return {state:receipt==='saved'?'duplicate':'uncertain'};
       localStorage.setItem(key,'pending');
     }catch(e){return {state:'unavailable'};}
-    const result=await sheetsPost(payload,url);
+    const result=await sheetsPost({...payload,uploadId:key},url);
     if(result&&result.ok){
       try{localStorage.setItem(key,'saved');}catch(e){}
-      return {state:'saved'};
+      return {state:Number(result.photoErrors||0)>0?'saved-photo-error':'saved'};
     }
     return {state:'uncertain'};
   };
@@ -752,9 +769,12 @@ function showUploadResult(state){
   if(state==='saved'){
     showUploadModal('success','저장 완료!','Google Sheets에 저장되었습니다.');
     setTimeout(()=>hideUploadModal(),1800);
+  }else if(state==='saved-photo-error'){
+    showUploadModal('success','거래 저장 완료','거래는 저장됐지만 일부 사진은 저장하지 못했습니다.');
+    setTimeout(()=>hideUploadModal(),2600);
   }else{
     hideUploadModal();
-    const message=state==='duplicate'?'✅ 이미 저장한 테스트 결과입니다. 중복 업로드하지 않았습니다.':
+    const message=state==='photo-unsupported'?'⚠️ 사진 저장 서버가 아직 준비되지 않아 업로드하지 않았습니다.':state==='duplicate'?'✅ 이미 저장한 테스트 결과입니다. 중복 업로드하지 않았습니다.':
       state==='unavailable'?'❌ 브라우저 저장 기능을 사용할 수 없어 업로드하지 않았습니다.':
       '⚠️ 저장 결과가 불확실합니다. 중복 방지를 위해 재전송하지 않았으니 시트를 확인해주세요.';
     showToast(message);
@@ -899,6 +919,53 @@ function setUnitResultMessage(index){
   records[currentIdx].memo=Number(index)===-1?'':(COMMON_RESULT_MESSAGES[Number(index)]||'');
   updateUI();
 }
+function readPhotoAsDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||''));
+    reader.onerror=()=>reject(new Error('사진을 읽지 못했습니다.'));
+    reader.readAsDataURL(file);
+  });
+}
+async function compressPhotoFile(file){
+  if(!file||!String(file.type||'').startsWith('image/'))throw new Error('사진 파일을 선택해주세요.');
+  const source=await readPhotoAsDataUrl(file);
+  const image=await new Promise((resolve,reject)=>{
+    const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error('사진을 열지 못했습니다.'));img.src=source;
+  });
+  const maxSide=960;
+  const scale=Math.min(1,maxSide/Math.max(image.naturalWidth||1,image.naturalHeight||1));
+  const width=Math.max(1,Math.round(image.naturalWidth*scale));
+  const height=Math.max(1,Math.round(image.naturalHeight*scale));
+  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const context=canvas.getContext('2d');context.drawImage(image,0,0,width,height);
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('사진 압축에 실패했습니다.')),'image/jpeg',0.45));
+  if(blob.size>400*1024)throw new Error('사진 용량이 큽니다. 화면을 가까이 촬영하거나 작은 사진을 선택해주세요.');
+  return readPhotoAsDataUrl(blob);
+}
+function photoPanelHTML(inputId,photoData,onChange,onRemove){
+  const input=`<input class="photo-file-input" id="${inputId}" type="file" accept="image/*" onchange="${onChange}"><input class="photo-file-input" id="${inputId}-camera" type="file" accept="image/*" capture="environment" onchange="${onChange}">`;
+  if(!photoData)return `${input}<button type="button" class="photo-add-btn" onclick="document.getElementById('${inputId}-camera').click()">📷 사진 촬영</button> <button type="button" class="photo-add-btn" onclick="document.getElementById('${inputId}').click()">사진 선택</button><div class="photo-help">거래당 1장 · 화면 확인용 저화질 JPEG로 자동 압축됩니다.</div>`;
+  return `${input}<div class="photo-preview-wrap"><img class="photo-preview" src="${photoData}" alt="결제 화면 사진"><div class="photo-actions"><span class="photo-status">사진 첨부됨</span><button type="button" class="photo-add-btn" onclick="document.getElementById('${inputId}').click()">사진 교체</button><button type="button" class="photo-remove-btn" onclick="${onRemove}">사진 삭제</button></div></div>`;
+}
+function renderUnitPhotoPanel(){
+  const panel=document.getElementById('unitPhotoPanel');if(!panel)return;
+  panel.innerHTML=photoPanelHTML('unitPhotoInput',records[currentIdx].photoData||'','attachUnitPhoto(this)','removeUnitPhoto()');
+}
+async function attachUnitPhoto(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const record=records[currentIdx];pendingPhotos++;showToast('📷 사진을 압축하고 있습니다.');
+  try{
+    const photoData=await compressPhotoFile(file);
+    record.photoData=photoData;record.photoName='payment-screen.jpg';
+    if(records[currentIdx]===record)renderUnitPhotoPanel();
+    showToast('✅ 사진이 첨부되었습니다.');
+  }catch(error){showToast('❌ '+error.message);}
+  finally{pendingPhotos--;input.value='';}
+}
+function removeUnitPhoto(){
+  records[currentIdx].photoData='';records[currentIdx].photoName='';renderUnitPhotoPanel();
+}
 function updateUI(){
   renderTabs();
   const r=records[currentIdx];
@@ -911,6 +978,7 @@ function updateUI(){
   previousAmountBtn.textContent=previousAmount?`직전 금액 사용 · ${previousAmount}`:'';
   document.getElementById('memo').value=r.memo||'';
   renderUnitResultMessages();
+  renderUnitPhotoPanel();
   document.getElementById('qpsRow').style.display=r.subCategory==='IC 인서트'?'none':'flex';
   ['hotkey','brandSelection','pinOut','pinIn','pinBypass','qpsStatus','status'].forEach(id=>{
     const btn=document.getElementById(id);btn.textContent=r[id];
@@ -1003,11 +1071,12 @@ function saveExcel(){
 // ══ 업로드 (건별 테스트) ══
 async function uploadAndSave(){
   if(isBusy)return;
+  if(pendingPhotos){showToast('📷 사진 압축이 끝난 후 저장해주세요.');return;}
   const sn=document.getElementById('storeName').value.trim();
   if(!sn){showToast('⚠️ 가맹점명을 입력해주세요.');return;}
   if(!settings.sheetsUrl){showToast('⚠️ 설정에서 Sheets URL을 먼저 입력해주세요.');return;}
   commitCurrentUnitCard();
-  const activeRecords=records.filter(r=>r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo||r.cardNumber);
+  const activeRecords=records.filter(r=>r.category||r.subCategory||r.amount||r.status!=='N/A'||r.memo||r.cardNumber||r.photoData);
   if(!activeRecords.length){showToast('⚠️ 테스트 내용을 입력해주세요.');return;}
   activeRecords.forEach(r=>rememberCard(r.category,r.subCategory,r.cardNumber));
   isBusy=true;
@@ -1024,9 +1093,11 @@ async function uploadAndSave(){
     qpsStatus      : r.qpsStatus      || 'N/A',
     status         : r.status         || 'N/A',
     memo           : r.memo           || '',
-    cardNumber     : sheetsCardNumber(r.category,r.subCategory,r.cardNumber)
+    cardNumber     : sheetsCardNumber(r.category,r.subCategory,r.cardNumber),
+    photoData      : r.photoData      || '',
+    photoName      : r.photoName      || ''
   }));
-  const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
+  const payload={action:'saveSession',uploadId:unitUploadSessionId,brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:enriched};
   try{showUploadResult((await saveSessionOnce(payload,unitUploadSessionId)).state);}
   catch(e){showUploadResult('uncertain');}
   finally{isBusy=false;}
@@ -1041,7 +1112,7 @@ function hideUploadModal(){document.getElementById('uploadModal').classList.remo
 
 // ══ 이탈 (건별 테스트 화면 뒤로가기) ══
 function confirmGoBack(){
-  if(records.some(r=>r.category||r.amount||r.subCategory)){
+  if(records.some(r=>r.category||r.amount||r.subCategory||r.memo||r.photoData)){
     if(!confirm('저장을 완료한 후 테스트를 종료해 주세요.\n그래도 나가시겠습니까?'))return;
   }
   goBack();
@@ -1097,7 +1168,7 @@ let lastScenarioAmount='';
 
 function scenarioKey(device,tab,id){return device+'_'+tab+'_'+id;}
 function newScenarioEntry(tier){
-  return {amount:SCENARIO_DEFAULT_AMOUNT[tier]||'',status:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qps:'N/A',hotkeyToggle:'N/A',brandToggle:'N/A',memo:'',memoAuto:false,cardNumber:''};
+  return {amount:SCENARIO_DEFAULT_AMOUNT[tier]||'',status:'N/A',pinOut:'N/A',pinIn:'N/A',pinBypass:'N/A',qps:'N/A',hotkeyToggle:'N/A',brandToggle:'N/A',memo:'',memoAuto:false,cardNumber:'',photoData:'',photoName:''};
 }
 function getScenarioEntry(device,tab,id,tier){
   const key=scenarioKey(device,tab,id);
@@ -1107,7 +1178,7 @@ function getScenarioEntry(device,tab,id,tier){
 function hasScenarioData(){
   const storeName=document.getElementById('scenarioStoreName')?.value.trim();
   return !!storeName || Object.values(scenarioData).some(e=>
-    e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo||e.cardNumber);
+    e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo||e.cardNumber||e.photoData);
 }
 
 function goToScenario(){
@@ -1258,6 +1329,8 @@ function renderScenarioList(tier,items,container,tab=scenarioHotkey){
           <input class="scenario-input scenario-memo-input" id="scenarioMemo-${key}" type="text" placeholder="결제 후 표시된 문구 또는 메모 입력" value="${entry.memo||''}" oninput="setScenarioMemo('${key}',this.value)">
           <div class="result-message-title">자주 쓰는 오류 안내문구</div>
           <div class="result-message-options">${resultMessageButtonsHTML(entry.memo||'',`selectScenarioResultMessage('${key}',__INDEX__)`, `document.getElementById('scenarioMemo-${key}').focus()` )}</div>
+          <div class="result-message-title">결제 화면 사진 <span style="font-weight:400;color:#999;">(선택)</span></div>
+          ${photoPanelHTML(`scenarioPhotoInput-${key}`,entry.photoData||'',`attachScenarioPhoto('${key}',this)`,`removeScenarioPhoto('${key}')`)}
         </div>
       </div>
     </div>`;
@@ -1280,6 +1353,22 @@ function selectScenarioResultMessage(key,index){
   scenarioData[key].memo=Number(index)===-1?'':(COMMON_RESULT_MESSAGES[Number(index)]||'');
   scenarioData[key].memoAuto=false;
   saveScenarioDraft();renderScenario();
+}
+async function attachScenarioPhoto(key,input){
+  const file=input.files&&input.files[0];if(!file)return;
+  if(!scenarioData[key])scenarioData[key]=newScenarioEntry();
+  const entry=scenarioData[key];pendingPhotos++;showToast('📷 사진을 압축하고 있습니다.');
+  try{
+    const photoData=await compressPhotoFile(file);
+    if(scenarioData[key]!==entry)return;
+    entry.photoData=photoData;entry.photoName='payment-screen.jpg';
+    saveScenarioDraft();renderScenario();showToast('✅ 사진이 첨부되었습니다.');
+  }catch(error){showToast('❌ '+error.message);}
+  finally{pendingPhotos--;input.value='';}
+}
+function removeScenarioPhoto(key){
+  if(!scenarioData[key])return;
+  scenarioData[key].photoData='';scenarioData[key].photoName='';saveScenarioDraft();renderScenario();
 }
 function setScenarioAmount(key,el){
   const v=el.value.replace(/[^0-9]/g,'');
@@ -1325,7 +1414,7 @@ function updateScenarioProgress(){
 
 function hasScenarioEntryData(){
   return Object.values(scenarioData).some(e=>
-    e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo||e.cardNumber);
+    e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo||e.cardNumber||e.photoData);
 }
 function updateScenarioDraftButton(){
   const btn=document.getElementById('scenarioRestoreBtn');
@@ -1339,10 +1428,10 @@ function saveScenarioDraft(){
   if(!storeName.trim()&&!hasScenarioEntryData()){updateScenarioDraftButton();return;}
   try{
     localStorage.setItem(SCENARIO_DRAFT_KEY,JSON.stringify({
-      version:5,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,
+      version:6,storeName,scenarioDevice:SCENARIO_TERMINAL_TYPE,scenarioHotkey,scenarioData,
       scenarioUploadSessionId,lastScenarioAmount,savedAt:new Date().toISOString()
     }));
-  }catch(e){}
+  }catch(e){showToast('⚠️ 기기 저장 공간이 부족해 이전 기록을 보존하지 못했습니다. 나가기 전에 업로드해주세요.');}
   updateScenarioDraftButton();
 }
 function normalizeScenarioEntry(entry){
@@ -1413,7 +1502,7 @@ function buildScenarioRecords(){
   const list=[];
   const append=(item,e,tab)=>{
     if(!e)return;
-    const touched=e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo||e.cardNumber;
+    const touched=e.status!=='N/A'||e.pinOut!=='N/A'||e.pinIn!=='N/A'||e.pinBypass!=='N/A'||e.qps!=='N/A'||e.hotkeyToggle!=='N/A'||e.brandToggle!=='N/A'||e.memo||e.cardNumber||e.photoData;
     if(!touched)return;
     list.push({
       terminalType   : SCENARIO_TERMINAL_TYPE,
@@ -1428,7 +1517,9 @@ function buildScenarioRecords(){
       qpsStatus      : scenarioQpsEligible(item) ? e.qps : 'N/A',
       status         : e.status,
       memo           : e.memoAuto ? '한도초과' : (e.memo||''),
-      cardNumber     : sanitizeCardNumber(e.cardNumber)
+      cardNumber     : sanitizeCardNumber(e.cardNumber),
+      photoData      : e.photoData||'',
+      photoName      : e.photoName||''
     });
   };
   scenarioItems('common').forEach(item=>append(item,scenarioData[scenarioKey(SCENARIO_TERMINAL_TYPE,'COMMON',item.id)],'COMMON'));
@@ -1440,6 +1531,7 @@ function buildScenarioRecords(){
 
 async function uploadScenario(){
   if(isBusy)return;
+  if(pendingPhotos){showToast('📷 사진 압축이 끝난 후 저장해주세요.');return;}
   const sn=document.getElementById('scenarioStoreName').value.trim();
   if(!sn){showToast('⚠️ 가맹점명을 입력해주세요.');return;}
   if(!settings.sheetsUrl){showToast('⚠️ 설정에서 Sheets URL을 먼저 입력해주세요.');return;}
@@ -1448,7 +1540,7 @@ async function uploadScenario(){
   isBusy=true;
   showUploadModal('loading','저장 중...','Google Sheets에 업로드하고 있습니다.');
   const storedRecords=enriched.map(record=>({...record,cardNumber:sheetsCardNumber(record.category,record.subCategory,record.cardNumber)}));
-  const payload={action:'saveSession',brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:storedRecords};
+  const payload={action:'saveSession',uploadId:scenarioUploadSessionId,brandId:sn,brandName:sn,date:new Date().toISOString().split('T')[0],storeName:sn,records:storedRecords};
   try{showUploadResult((await saveSessionOnce(payload,scenarioUploadSessionId)).state);}
   catch(e){showUploadResult('uncertain');}
   finally{isBusy=false;}
