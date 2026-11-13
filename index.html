@@ -107,8 +107,8 @@
     .scenario-item-dot.dot-n{background:var(--red);}
     .scenario-item-chevron{font-size:12px;color:#bbb;transition:var(--tr);flex-shrink:0;}
     .scenario-item.open .scenario-item-chevron{transform:rotate(90deg);}
-    .scenario-item-body{max-height:0;overflow:hidden;transition:max-height 0.3s ease;background:#fafbfd;}
-    .scenario-item.open .scenario-item-body{max-height:600px;}
+    .scenario-item-body{display:none;background:#fafbfd;}
+    .scenario-item.open .scenario-item-body{display:block;}
     .scenario-item-body-inner{padding:12px;display:flex;flex-direction:column;gap:8px;border-top:1px solid #f0f0f0;}
     .scenario-field-label{font-size:11px;color:#888;font-weight:700;margin-bottom:4px;}
     .scenario-input{width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:13.5px;outline:none;background:white;box-sizing:border-box;}
@@ -343,7 +343,7 @@
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.3</div>
+    <div class="main-version">UPI Test Manager v7.4</div>
   </div>
 </div>
 
@@ -1329,8 +1329,10 @@ function renderScenarioList(tier,items,container,tab=scenarioHotkey){
           <input class="scenario-input scenario-memo-input" id="scenarioMemo-${key}" type="text" placeholder="결제 후 표시된 문구 또는 메모 입력" value="${entry.memo||''}" oninput="setScenarioMemo('${key}',this.value)">
           <div class="result-message-title">자주 쓰는 오류 안내문구</div>
           <div class="result-message-options">${resultMessageButtonsHTML(entry.memo||'',`selectScenarioResultMessage('${key}',__INDEX__)`, `document.getElementById('scenarioMemo-${key}').focus()` )}</div>
-          <div class="result-message-title">결제 화면 사진 <span style="font-weight:400;color:#999;">(선택)</span></div>
-          ${photoPanelHTML(`scenarioPhotoInput-${key}`,entry.photoData||'',`attachScenarioPhoto('${key}',this)`,`removeScenarioPhoto('${key}')`)}
+          <div class="photo-panel">
+            <div class="result-message-title" style="margin-top:0;">결제 화면 사진 <span style="font-weight:400;color:#999;">(선택)</span></div>
+            ${photoPanelHTML(`scenarioPhotoInput-${key}`,entry.photoData||'',`attachScenarioPhoto('${key}',this)`,`removeScenarioPhoto('${key}')`)}
+          </div>
         </div>
       </div>
     </div>`;
