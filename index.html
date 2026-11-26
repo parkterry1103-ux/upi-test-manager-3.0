@@ -351,7 +351,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.6</div>
+    <div class="main-version">UPI Test Manager v7.7</div>
   </div>
 </div>
 
@@ -400,8 +400,8 @@
     <input id="hceDate" class="form-input" readonly>
     <label class="section-label" for="hceMerchant">가맹점명</label>
     <input id="hceMerchant" class="form-input" maxlength="120">
-    <label class="section-label" for="hceTerminal">단말기 모델</label>
-    <input id="hceTerminal" class="form-input" maxlength="120">
+    <label class="section-label" for="hceTerminal">단말기 모델 (선택)</label>
+    <input id="hceTerminal" class="form-input" maxlength="120" placeholder="모르면 비워두세요">
     <p class="hce-amount-hint" style="margin-top:16px;">같은 금액 구간은 최근 입력 금액을 자동으로 채웁니다. 완료한 케이스만 저장·복사됩니다.</p>
     <div class="section-label">고액</div>
     <div id="hceHighCases" class="hce-case-list"></div>
@@ -1877,7 +1877,7 @@ function chooseHceMessage(index,field,option) {
 
 function hceExportBatch(includeSaved=true) {
   const date=hceInput('hceDate').value, merchant=hceInput('hceMerchant').value.trim(), terminal=hceInput('hceTerminal').value.trim();
-  if(!merchant||!terminal){showToast('가맹점명과 단말기 모델을 입력해주세요.');return {rows:[],indexes:[]};}
+  if(!merchant){showToast('가맹점명을 입력해주세요.');return {rows:[],indexes:[]};}
   const rows=[], indexes=[];
   hceEntries.forEach((entry,index)=>{
     if(!hceCaseComplete(entry)||(!includeSaved&&entry.saved))return;
