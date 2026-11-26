@@ -141,6 +141,10 @@
 
     /* 테스트 입력 — 하단 버튼 공간 불필요 (인라인 배치) */
     #screen-test .container{padding-bottom:0;}
+    #screen-hce .section-label{display:block;}
+    #screen-hce .result-message-options{margin-top:8px;}
+    #screen-hce .value-prev-btn:not([hidden]){display:block;margin-top:10px;}
+    #hceQueue{margin-top:10px;color:#536784;font-size:13px;}
     .section-label{font-size:13px;color:#555;font-weight:700;margin:20px 0 10px;padding-left:10px;border-left:4px solid var(--blue);}
     .store-input-wrap{background:white;border-radius:14px;padding:14px 16px;box-shadow:var(--card-shadow);margin-bottom:4px;}
     .store-input-wrap label{font-size:12px;color:#888;font-weight:600;}
@@ -342,8 +346,9 @@
       <div class="main-subtitle">거래 테스트 매니저 v4.0</div>
       <button class="main-btn main-btn-primary" onclick="goToScenario()" style="animation-delay:0.15s">📋 고정 시나리오 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
+      <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.4</div>
+    <div class="main-version">UPI Test Manager v7.5</div>
   </div>
 </div>
 
@@ -382,6 +387,50 @@
 </div>
 
 <!-- ══ 테스트 입력 ══ -->
+<div id="screen-hce" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" type="button" onclick="goBack()" aria-label="뒤로">←</button>
+    <h2>HCE 테스트</h2><div style="width:36px"></div>
+  </div>
+  <div class="container">
+    <label class="section-label" for="hceDate">날짜</label>
+    <input id="hceDate" class="form-input" readonly>
+    <label class="section-label" for="hceMerchant">가맹점명</label>
+    <input id="hceMerchant" class="form-input" maxlength="120">
+    <label class="section-label" for="hceTerminal">단말기 모델</label>
+    <input id="hceTerminal" class="form-input" maxlength="120">
+    <label class="section-label" for="hceCard">카드번호 (선택)</label>
+    <div class="card-panel">
+      <select id="hceRecent" class="card-select" aria-label="최근 사용 카드" onchange="chooseHceRecent(this.value)"></select>
+      <input id="hceCard" class="form-input" autocomplete="off" placeholder="끝 4자리 검색 또는 전체 번호" oninput="searchHceCards()">
+      <div id="hceMatches" class="card-match-list"></div>
+    </div>
+    <label class="section-label" for="hceType">카드 구분</label>
+    <select id="hceType" class="form-input">
+      <option value="">선택</option><option value="debit">Debit</option><option value="credit">Credit</option><option value="dual">Dual</option>
+    </select>
+    <label class="section-label" for="hceAmount">금액 (원)</label>
+    <input id="hceAmount" class="form-input" inputmode="numeric" maxlength="15" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    <button id="hcePreviousAmount" type="button" class="value-prev-btn" onclick="useHcePreviousAmount()" hidden></button>
+    <label class="section-label" for="hceSuccess">성공 여부</label>
+    <select id="hceSuccess" class="form-input">
+      <option value="">선택</option><option value="Y">Y</option><option value="N">N</option>
+    </select>
+    <div id="hceMessages"></div>
+    <div id="hceAccess" hidden>
+      <label class="section-label" for="hceAccessKey">HCE 연결 키 (시트 업로드용)</label>
+      <input id="hceAccessKey" class="form-input" type="password" autocomplete="off" spellcheck="false" maxlength="128">
+    </div>
+    <button class="value-prev-btn" type="button" onclick="nextHceTest()">＋ 다음 테스트</button>
+    <div id="hceQueue" aria-live="polite"></div>
+    <div class="bottom-bar">
+      <button class="bb-btn bb-upload" type="button" onclick="uploadHceTests()">업로드 및 저장</button>
+      <button class="bb-btn bb-summary" type="button" onclick="copyHceTests()">표 복사</button>
+      <button class="bb-btn bb-excel" type="button" onclick="downloadHceTests()">엑셀 다운</button>
+    </div>
+  </div>
+</div>
+
 <div id="screen-test" class="screen">
   <div class="top-bar">
     <button class="back-btn" onclick="confirmGoBack()">←</button>
@@ -1572,6 +1621,252 @@ function confirmScenarioGoBack(){
   if(hasScenarioData())showToast('💾 이전 기록이 임시 보존되었습니다.');
 }
 
+// ══ HCE 테스트 ══
+const HCE_HEADERS = [
+  'Date','Merchant','Terminal Model','Card Number','Card Type','Transaction Type',
+  'Transaction Amount','Success?','Test result - 终端提示','Test result - APP提示','备注'
+];
+const HCE_METHOD = 'HCE(Android)';
+const HCE_FIELDS = [
+  ['hceTerminalResult','단말기 결과 · 终端提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','该商户保护支持代办业务','无法进行交易']],
+  ['hceAppResult','앱 결과 · APP提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','无法进行交易']],
+  ['hceNote','비고 · 备注',['按热键','不按热键','VISA only']]
+];
+const hceInput = id => document.getElementById(id);
+let hceQueue = [];
+let hceLastSaved = [];
+let hceLastDestination = '';
+let hcePreviousAmount = '';
+let hceSessionId = newUploadSessionId();
+let hceBusy = false;
+let hceSelectedCard = '';
+
+function hceToday() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'
+  }).formatToParts();
+  return ['year','month','day'].map(type => parts.find(part => part.type === type).value).join('');
+}
+
+function openHceTest() {
+  if (!hceHasCurrent()) hceInput('hceDate').value = hceToday();
+  const container = hceInput('hceMessages');
+  if (!container.childElementCount) {
+    for (const [id,label,options] of HCE_FIELDS) {
+      const section = document.createElement('div');
+      section.innerHTML = `<label class="section-label" for="${id}">${label}</label>
+        <input id="${id}" class="form-input" maxlength="500" placeholder="선택하거나 직접 입력">
+        <div class="result-message-options"></div>`;
+      const input = section.querySelector('input');
+      const buttons = section.querySelector('.result-message-options');
+      for (const value of options) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'result-message-chip';
+        button.textContent = value;
+        button.onclick = () => {
+          input.value = value;
+          input.dispatchEvent(new Event('input'));
+        };
+        buttons.appendChild(button);
+      }
+      input.oninput = () => {
+        for (const button of buttons.children) {
+          const selected = button.textContent === input.value;
+          button.classList.toggle('active',selected);
+          button.setAttribute('aria-pressed', selected);
+        }
+      };
+      container.appendChild(section);
+    }
+  }
+  renderHceStatus();
+  goTo('hce');
+}
+
+function hceHasCurrent() {
+  return ['hceCard','hceType','hceAmount','hceSuccess',...HCE_FIELDS.map(([id])=>id)]
+    .some(id => hceInput(id)?.value.trim());
+}
+
+function renderHceStatus() {
+  const recent = hceInput('hceRecent');
+  recent.replaceChildren(new Option('최근 사용 카드', ''));
+  getRecentCardOptions('', HCE_METHOD).forEach((card,index) => {
+    recent.add(new Option(maskCardNumber(card), String(index)));
+  });
+  recent.hidden = recent.options.length === 1;
+  const previous = hceInput('hcePreviousAmount');
+  previous.hidden = !hcePreviousAmount;
+  previous.textContent = hcePreviousAmount ? `직전 금액 사용 · ${Number(hcePreviousAmount).toLocaleString('ko-KR')}원` : '';
+  hceInput('hceQueue').textContent = hceQueue.length ? `저장 대기 ${hceQueue.length}건` :
+    hceLastSaved.length ? `${hceLastDestination}에 ${hceLastSaved.length}건 저장됨 · 표 복사 및 엑셀 다운 가능` : '';
+}
+
+function selectHceCard(card) {
+  hceSelectedCard = card;
+  hceInput('hceCard').value = maskCardNumber(card);
+  hceInput('hceMatches').replaceChildren();
+  const type = [['debitPhysical','debit'],['creditPhysical','credit'],['dual','dual']]
+    .find(([group]) => cardCatalog[group].includes(card));
+  if (type) hceInput('hceType').value = type[1];
+  rememberRecentCard('', HCE_METHOD, card);
+  renderHceStatus();
+}
+
+function chooseHceRecent(index) {
+  if (index === '') return;
+  const card = getRecentCardOptions('', HCE_METHOD)[Number(index)];
+  if (card) selectHceCard(card);
+}
+
+function searchHceCards() {
+  hceSelectedCard = '';
+  const value = sanitizeCardNumber(hceInput('hceCard').value);
+  hceInput('hceCard').value = value;
+  const matches = hceInput('hceMatches');
+  matches.replaceChildren();
+  const exact = getCardOptions('', HCE_METHOD).find(card => card === value);
+  if (exact) { selectHceCard(exact); return; }
+  for (const card of findCardSuffixMatches('', HCE_METHOD, value)) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'result-message-chip';
+    button.textContent = maskCardNumber(card);
+    button.onclick = () => selectHceCard(card);
+    matches.appendChild(button);
+  }
+}
+
+function useHcePreviousAmount() {
+  hceInput('hceAmount').value = hcePreviousAmount;
+}
+
+function readHceRow() {
+  const value = id => hceInput(id).value.trim();
+  const merchant = value('hceMerchant'), terminal = value('hceTerminal'), amount = value('hceAmount');
+  const card = hceSelectedCard || sanitizeCardNumber(value('hceCard'));
+  const success = value('hceSuccess');
+  if (!merchant || !terminal || !amount || !success) {
+    showToast('가맹점명, 단말기 모델, 금액, 성공 여부를 입력해주세요.');
+    return null;
+  }
+  if (card && !isCompleteCardNumber(card)) {
+    showToast('검색 결과에서 카드를 선택하거나 전체 번호를 입력해주세요. 카드번호는 비워도 됩니다.');
+    return null;
+  }
+  return [value('hceDate'),merchant,terminal,card,value('hceType'),'',Number(amount),success,
+    ...HCE_FIELDS.map(([id])=>value(id))];
+}
+
+function appendHceCurrent() {
+  const row = readHceRow();
+  if (!row) return false;
+  hceQueue.push(row);
+  hcePreviousAmount = String(row[6]);
+  hceSelectedCard = '';
+  ['hceCard','hceType','hceAmount','hceSuccess',...HCE_FIELDS.map(([id])=>id)].forEach(id => {
+    hceInput(id).value = '';
+    if (id !== 'hceCard') hceInput(id).dispatchEvent(new Event('input'));
+  });
+  hceInput('hceMatches').replaceChildren();
+  hceInput('hceDate').value = hceToday();
+  renderHceStatus();
+  return true;
+}
+
+function nextHceTest() {
+  if (!hceBusy && appendHceCurrent()) hceInput('hceCard').focus();
+}
+
+function hceRowsForExport(includeSaved = true) {
+  if (hceHasCurrent()) {
+    const row = readHceRow();
+    return row ? [...hceQueue,row] : [];
+  }
+  if (includeSaved && !hceQueue.length && hceLastSaved.length) return hceLastSaved.slice();
+  if (!hceQueue.length) showToast('먼저 테스트 내용을 입력해주세요.');
+  return hceQueue.slice();
+}
+
+async function copyHceTests() {
+  const rows = hceRowsForExport();
+  if (!rows.length) return;
+  const text = rows.map(row=>row.map((cell,index)=>{
+    const value = String(cell).replace(/[\t\r\n]+/g,' ');
+    return value && (index===3 || /^[=+@-]/.test(value)) ? "'"+value : value;
+  }).join('\t')).join('\n');
+  try {
+    let copied = false;
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(text); copied = true; } catch (err) { /* Try local clipboard fallback. */ }
+    }
+    if (!copied) {
+      const field = document.createElement('textarea');
+      field.value = text;
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand('copy');
+      field.remove();
+      if (!copied) throw Error('Clipboard unavailable');
+    }
+    showToast('복사했습니다. 시트의 C열부터 붙여넣으세요.');
+  } catch (err) { showToast('복사할 수 없습니다. 엑셀 다운을 이용해주세요.'); }
+}
+
+function downloadHceTests() {
+  const rows = hceRowsForExport();
+  if (!rows.length) return;
+  if (typeof XLSX === 'undefined') { showToast('엑셀 기능을 불러오지 못했습니다.'); return; }
+  const sheet = XLSX.utils.aoa_to_sheet([HCE_HEADERS,...rows]);
+  formatExcelCardNumberColumn(sheet,rows.length,3);
+  const book = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(book,sheet,'HCE Test');
+  XLSX.writeFile(book,`HCE_Test_${hceToday()}.xlsx`);
+}
+
+async function uploadHceTests() {
+  if (hceBusy) return;
+  const rows = hceRowsForExport(false);
+  if (!rows.length) return;
+  if (rows.length > 100) { showToast('한 번에 최대 100건을 저장할 수 있습니다.'); return; }
+  hceBusy = true;
+  const buttons = hceInput('screen-hce').querySelectorAll('.bottom-bar button, .value-prev-btn');
+  const entries = hceInput('screen-hce').querySelectorAll('input,select,#hceMessages button,#hceMatches button');
+  [...buttons,...entries].forEach(control => control.disabled = true);
+  try {
+    const url = settings.sheetsUrl;
+    const cap = await sheetsGet('hceCapabilities');
+    if (!cap?.ok || !cap.hce) {
+      showToast('HCE 시트 연결을 확인할 수 없습니다. 표 복사 또는 엑셀 다운을 이용해주세요.');
+      return;
+    }
+    hceInput('hceAccess').hidden = false;
+    const accessKey = hceInput('hceAccessKey').value.trim();
+    if (!accessKey) { showToast('시트 업로드에는 HCE 연결 키가 필요합니다.'); return; }
+    const payload = {action:'saveHceTests',rows};
+    const uploadId = await uploadReceiptKey(payload,hceSessionId,url);
+    const result = await sheetsPost({...payload,uploadId,accessKey},url);
+    if (!result?.ok) {
+      showToast(result?.error || '저장 응답이 없습니다. 같은 내용으로 다시 누르면 중복 저장을 방지합니다.');
+      return;
+    }
+    if (hceHasCurrent()) appendHceCurrent();
+    hceQueue = [];
+    hceLastSaved = rows;
+    hceLastDestination = result.destination || 'HCE 시트';
+    hcePreviousAmount = String(rows[rows.length-1][6]);
+    hceSessionId = newUploadSessionId();
+    renderHceStatus();
+    showToast(`${result.destination || 'HCE 시트'}에 ${rows.length}건 저장했습니다.`);
+  } catch (err) {
+    showToast('연결 오류가 발생했습니다. 입력 내용을 보존했습니다.');
+  } finally {
+    [...buttons,...entries].forEach(control => control.disabled = false);
+    hceBusy = false;
+  }
+}
+
 // ══ 설정 ══
 function openSettings(){document.getElementById('sheetsUrlInput').value=settings.sheetsUrl||'';updateCardCatalogStatus();document.getElementById('settingsModal').classList.add('show');}
 
@@ -1582,7 +1877,8 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 window.addEventListener('beforeunload', e => {
   const cur=screenHistory[screenHistory.length-1];
   if(cur==='scenario'&&hasScenarioData())saveScenarioDraft();
-  const dirty = cur==='test' && records.some(r => r.category || r.amount || r.subCategory);
+  const dirty = (cur==='test' && records.some(r => r.category || r.amount || r.subCategory)) ||
+    hceQueue.length || hceHasCurrent();
   if (dirty) {
     e.preventDefault();
     e.returnValue = '';
