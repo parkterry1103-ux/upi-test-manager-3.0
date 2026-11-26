@@ -148,6 +148,7 @@
     #screen-hce .hce-amount-hint{color:#536784;font-size:12px;}
     #screen-hce .hce-case-status{font-size:11px;color:#536784;white-space:nowrap;}
     #screen-hce .hce-case-list .form-input{max-width:100%;}
+    #hceRememberLabel:not([hidden]){display:block;margin:8px 0;}
     .section-label{font-size:13px;color:#555;font-weight:700;margin:20px 0 10px;padding-left:10px;border-left:4px solid var(--blue);}
     .store-input-wrap{background:white;border-radius:14px;padding:14px 16px;box-shadow:var(--card-shadow);margin-bottom:4px;}
     .store-input-wrap label{font-size:12px;color:#888;font-weight:600;}
@@ -351,7 +352,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.7</div>
+    <div class="main-version">UPI Test Manager v7.8</div>
   </div>
 </div>
 
@@ -410,6 +411,13 @@
     <div id="hceAccess" hidden>
       <label class="section-label" for="hceAccessKey">HCE 연결 키 (시트 업로드용)</label>
       <input id="hceAccessKey" class="form-input" type="password" autocomplete="off" spellcheck="false" maxlength="128">
+      <label id="hceRememberLabel" class="hce-amount-hint" hidden>
+        <input id="hceRemember" type="checkbox"> 이 브라우저에서 8시간 기억 (개인 기기에서만)
+      </label>
+    </div>
+    <div id="hceRemembered" style="margin-top:12px;" hidden>
+      <span class="hce-amount-hint">이 브라우저에서 HCE 업로드 연결됨</span>
+      <button id="hceForget" class="value-prev-btn" type="button" onclick="forgetHceBrowser()">연결 해제</button>
     </div>
     <div id="hceProgress" class="hce-amount-hint" style="margin-top:12px;" aria-live="polite"></div>
     <button id="hceNewMerchant" class="value-prev-btn" style="margin:12px 0;" type="button" onclick="newHceMerchant()">＋ 새 가맹점 테스트</button>
@@ -1631,6 +1639,54 @@ const HCE_FIELDS = [
 ];
 const hceInput = id => document.getElementById(id);
 const HCE_AMOUNTS_KEY = STORE_KEY+'_hce_tier_amounts';
+const HCE_BROWSER_SESSION_KEY = STORE_KEY+'_hce_browser_session:'+location.pathname;
+let hceRememberAvailable=false;
+let hceBrowserSession=null;
+
+function hceCanRemember(url) {
+  return location.protocol==='https:'&&url===DEFAULT_SHEETS_URL;
+}
+
+function loadHceBrowserSession(url) {
+  if(!hceCanRemember(url))return null;
+  try {
+    const session=JSON.parse(localStorage.getItem(HCE_BROWSER_SESSION_KEY)||'null');
+    if(!session)return null;
+    if(Number.isSafeInteger(session.expiresAt)&&session.expiresAt>Date.now()&&
+        typeof session.token==='string'&&/^\d{13}\.[a-f0-9]{32}\.[a-f0-9]{64}$/.test(session.token))return session;
+    localStorage.removeItem(HCE_BROWSER_SESSION_KEY);
+  } catch(err){}
+  return null;
+}
+
+function getHceBrowserSession(url) {
+  const session=loadHceBrowserSession(url);
+  return session||(hceCanRemember(url)&&hceBrowserSession?.expiresAt>Date.now()?hceBrowserSession:null);
+}
+
+function forgetHceBrowser() {
+  if(hceBusy)return;
+  hceBrowserSession=null;
+  try{localStorage.removeItem(HCE_BROWSER_SESSION_KEY);}catch(err){}
+  hceInput('hceAccessKey').value='';
+  hceInput('hceRemember').checked=false;
+  renderHceBrowserSession(true);
+}
+
+function renderHceBrowserSession(prompt=false) {
+  const remembered=!!getHceBrowserSession(settings.sheetsUrl);
+  hceInput('hceRemembered').hidden=!remembered;
+  hceInput('hceAccess').hidden=remembered||!prompt;
+  hceInput('hceRememberLabel').hidden=!hceRememberAvailable;
+}
+
+window.addEventListener('storage',event=>{
+  if(event.key===HCE_BROWSER_SESSION_KEY) {
+    hceBrowserSession=null;
+    renderHceBrowserSession();
+  }
+});
+
 function loadHceAmounts() {
   try {
     const saved=JSON.parse(localStorage.getItem(HCE_AMOUNTS_KEY)||'{}');
@@ -1659,6 +1715,7 @@ function hceToday() {
 function openHceTest() {
   if (!hceInput('hceDate').value || !hceEntries.some(hceCaseStarted)) hceInput('hceDate').value=hceToday();
   renderHceCases();
+  renderHceBrowserSession();
   goTo('hce');
 }
 
@@ -1932,7 +1989,7 @@ async function uploadHceTests() {
   const {rows,indexes} = hceExportBatch(false);
   if (!rows.length) return;
   hceBusy = true;
-  const controls=hceInput('screen-hce').querySelectorAll('.back-btn,.bottom-bar button,#hceNewMerchant,#hceMerchant,#hceTerminal,#hceAccessKey');
+  const controls=hceInput('screen-hce').querySelectorAll('.back-btn,.bottom-bar button,#hceNewMerchant,#hceMerchant,#hceTerminal,#hceAccessKey,#hceForget,#hceRemember');
   controls.forEach(control=>control.disabled=true);
   renderHceStatus();
   try {
@@ -1942,13 +1999,38 @@ async function uploadHceTests() {
       showToast('HCE 시트 연결을 확인할 수 없습니다. 표 복사 또는 엑셀 다운을 이용해주세요.');
       return;
     }
-    hceInput('hceAccess').hidden = false;
-    const accessKey = hceInput('hceAccessKey').value.trim();
-    if (!accessKey) { showToast('시트 업로드에는 HCE 연결 키가 필요합니다.'); return; }
+    hceRememberAvailable=Boolean(cap.rememberBrowser)&&hceCanRemember(url);
+    let session=hceRememberAvailable?getHceBrowserSession(url):null;
+    const accessKey=hceInput('hceAccessKey').value.trim();
+    if(!session&&!accessKey) {
+      renderHceBrowserSession(true);
+      showToast('처음 한 번 HCE 연결 키를 입력해주세요.');
+      return;
+    }
+    if(!session&&hceRememberAvailable&&hceInput('hceRemember').checked) {
+      const result=await sheetsPost({action:'hceStartSession',accessKey},url);
+      if(!result?.ok) {
+        showToast(result?.error||'브라우저 연결에 실패했습니다. 다시 시도해주세요.');
+        return;
+      }
+      session={token:result.token,expiresAt:result.expiresAt};
+      hceBrowserSession=session;
+      try{localStorage.setItem(HCE_BROWSER_SESSION_KEY,JSON.stringify(session));}catch(err){}
+      hceInput('hceAccessKey').value='';
+      hceInput('hceRemember').checked=false;
+    }
+    renderHceBrowserSession(!session);
     const payload = {action:'saveHceTests',rows};
     const uploadId = await uploadReceiptKey({...payload,caseIndexes:indexes},hceSessionId,url);
-    const result = await sheetsPost({...payload,uploadId,accessKey},url);
+    const result = await sheetsPost({...payload,uploadId,...(session?{sessionToken:session.token}:{accessKey})},url);
     if (!result?.ok) {
+      if(result?.authRequired&&session) {
+        hceBrowserSession=null;
+        try {
+          if(loadHceBrowserSession(url)?.token===session.token)localStorage.removeItem(HCE_BROWSER_SESSION_KEY);
+        } catch(err){}
+        renderHceBrowserSession(true);
+      }
       showToast(result?.error || '저장 응답이 없습니다. 같은 내용으로 다시 누르면 중복 저장을 방지합니다.');
       return;
     }
