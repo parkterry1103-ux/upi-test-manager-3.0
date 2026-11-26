@@ -143,8 +143,11 @@
     #screen-test .container{padding-bottom:0;}
     #screen-hce .section-label{display:block;}
     #screen-hce .result-message-options{margin-top:8px;}
-    #screen-hce .value-prev-btn:not([hidden]){display:block;margin-top:10px;}
-    #hceQueue{margin-top:10px;color:#536784;font-size:13px;}
+    #screen-hce .scenario-item-header{width:100%;border:0;background:transparent;text-align:left;font:inherit;}
+    #screen-hce .hce-case-list{display:grid;gap:8px;}
+    #screen-hce .hce-amount-hint{color:#536784;font-size:12px;}
+    #screen-hce .hce-case-status{font-size:11px;color:#536784;white-space:nowrap;}
+    #screen-hce .hce-case-list .form-input{max-width:100%;}
     .section-label{font-size:13px;color:#555;font-weight:700;margin:20px 0 10px;padding-left:10px;border-left:4px solid var(--blue);}
     .store-input-wrap{background:white;border-radius:14px;padding:14px 16px;box-shadow:var(--card-shadow);margin-bottom:4px;}
     .store-input-wrap label{font-size:12px;color:#888;font-weight:600;}
@@ -348,7 +351,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.5</div>
+    <div class="main-version">UPI Test Manager v7.6</div>
   </div>
 </div>
 
@@ -389,7 +392,7 @@
 <!-- ══ 테스트 입력 ══ -->
 <div id="screen-hce" class="screen">
   <div class="top-bar">
-    <button class="back-btn" type="button" onclick="goBack()" aria-label="뒤로">←</button>
+    <button class="back-btn" type="button" onclick="if(!hceBusy)goBack()" aria-label="뒤로">←</button>
     <h2>HCE 테스트</h2><div style="width:36px"></div>
   </div>
   <div class="container">
@@ -399,30 +402,17 @@
     <input id="hceMerchant" class="form-input" maxlength="120">
     <label class="section-label" for="hceTerminal">단말기 모델</label>
     <input id="hceTerminal" class="form-input" maxlength="120">
-    <label class="section-label" for="hceCard">카드번호 (선택)</label>
-    <div class="card-panel">
-      <select id="hceRecent" class="card-select" aria-label="최근 사용 카드" onchange="chooseHceRecent(this.value)"></select>
-      <input id="hceCard" class="form-input" autocomplete="off" placeholder="끝 4자리 검색 또는 전체 번호" oninput="searchHceCards()">
-      <div id="hceMatches" class="card-match-list"></div>
-    </div>
-    <label class="section-label" for="hceType">카드 구분</label>
-    <select id="hceType" class="form-input">
-      <option value="">선택</option><option value="debit">Debit</option><option value="credit">Credit</option><option value="dual">Dual</option>
-    </select>
-    <label class="section-label" for="hceAmount">금액 (원)</label>
-    <input id="hceAmount" class="form-input" inputmode="numeric" maxlength="15" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-    <button id="hcePreviousAmount" type="button" class="value-prev-btn" onclick="useHcePreviousAmount()" hidden></button>
-    <label class="section-label" for="hceSuccess">성공 여부</label>
-    <select id="hceSuccess" class="form-input">
-      <option value="">선택</option><option value="Y">Y</option><option value="N">N</option>
-    </select>
-    <div id="hceMessages"></div>
+    <p class="hce-amount-hint" style="margin-top:16px;">같은 금액 구간은 최근 입력 금액을 자동으로 채웁니다. 완료한 케이스만 저장·복사됩니다.</p>
+    <div class="section-label">고액</div>
+    <div id="hceHighCases" class="hce-case-list"></div>
+    <div class="section-label">소액</div>
+    <div id="hceLowCases" class="hce-case-list"></div>
     <div id="hceAccess" hidden>
       <label class="section-label" for="hceAccessKey">HCE 연결 키 (시트 업로드용)</label>
       <input id="hceAccessKey" class="form-input" type="password" autocomplete="off" spellcheck="false" maxlength="128">
     </div>
-    <button class="value-prev-btn" type="button" onclick="nextHceTest()">＋ 다음 테스트</button>
-    <div id="hceQueue" aria-live="polite"></div>
+    <div id="hceProgress" class="hce-amount-hint" style="margin-top:12px;" aria-live="polite"></div>
+    <button id="hceNewMerchant" class="value-prev-btn" style="margin:12px 0;" type="button" onclick="newHceMerchant()">＋ 새 가맹점 테스트</button>
     <div class="bottom-bar">
       <button class="bb-btn bb-upload" type="button" onclick="uploadHceTests()">업로드 및 저장</button>
       <button class="bb-btn bb-summary" type="button" onclick="copyHceTests()">표 복사</button>
@@ -1627,19 +1617,37 @@ const HCE_HEADERS = [
   'Transaction Amount','Success?','Test result - 终端提示','Test result - APP提示','备注'
 ];
 const HCE_METHOD = 'HCE(Android)';
+const HCE_CASES = [
+  {tier:'high',type:'debit',category:'체크카드',method:'HCE'},
+  {tier:'high',type:'credit',category:'신용카드',method:'HCE'},
+  {tier:'high',type:'debit',category:'체크카드',method:'실물 NFC'},
+  {tier:'low',type:'debit',category:'체크카드',method:'HCE'},
+  {tier:'low',type:'credit',category:'신용카드',method:'HCE'}
+];
 const HCE_FIELDS = [
-  ['hceTerminalResult','단말기 결과 · 终端提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','该商户保护支持代办业务','无法进行交易']],
-  ['hceAppResult','앱 결과 · APP提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','无法进行交易']],
-  ['hceNote','비고 · 备注',['按热键','不按热键','VISA only']]
+  ['terminalResult','단말기 결과 · 终端提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','该商户保护支持代办业务','无法进行交易']],
+  ['appResult','앱 결과 · APP提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','无法进行交易']],
+  ['note','비고 · 备注',['按热键','不按热键','VISA only']]
 ];
 const hceInput = id => document.getElementById(id);
-let hceQueue = [];
-let hceLastSaved = [];
+const HCE_AMOUNTS_KEY = STORE_KEY+'_hce_tier_amounts';
+function loadHceAmounts() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(HCE_AMOUNTS_KEY)||'{}');
+    return {high:hceAmountDigits(saved?.high),low:hceAmountDigits(saved?.low)};
+  } catch (err) { return {high:'',low:''}; }
+}
+function hceAmountDigits(value) { return String(value??'').replace(/\D/g,'').slice(0,15); }
+let hceAmounts = loadHceAmounts();
+function newHceEntries() {
+  return HCE_CASES.map(item=>({amount:hceAmounts[item.tier],amountManual:false,card:'',
+    success:'',terminalResult:'',appResult:'',note:'',saved:false}));
+}
+let hceEntries = newHceEntries();
 let hceLastDestination = '';
-let hcePreviousAmount = '';
 let hceSessionId = newUploadSessionId();
 let hceBusy = false;
-let hceSelectedCard = '';
+let hceOpenIndex = 0;
 
 function hceToday() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -1649,148 +1657,242 @@ function hceToday() {
 }
 
 function openHceTest() {
-  if (!hceHasCurrent()) hceInput('hceDate').value = hceToday();
-  const container = hceInput('hceMessages');
-  if (!container.childElementCount) {
-    for (const [id,label,options] of HCE_FIELDS) {
-      const section = document.createElement('div');
-      section.innerHTML = `<label class="section-label" for="${id}">${label}</label>
-        <input id="${id}" class="form-input" maxlength="500" placeholder="선택하거나 직접 입력">
-        <div class="result-message-options"></div>`;
-      const input = section.querySelector('input');
-      const buttons = section.querySelector('.result-message-options');
-      for (const value of options) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'result-message-chip';
-        button.textContent = value;
-        button.onclick = () => {
-          input.value = value;
-          input.dispatchEvent(new Event('input'));
-        };
-        buttons.appendChild(button);
-      }
-      input.oninput = () => {
-        for (const button of buttons.children) {
-          const selected = button.textContent === input.value;
-          button.classList.toggle('active',selected);
-          button.setAttribute('aria-pressed', selected);
-        }
-      };
-      container.appendChild(section);
-    }
-  }
-  renderHceStatus();
+  if (!hceInput('hceDate').value || !hceEntries.some(hceCaseStarted)) hceInput('hceDate').value=hceToday();
+  renderHceCases();
   goTo('hce');
 }
 
-function hceHasCurrent() {
-  return ['hceCard','hceType','hceAmount','hceSuccess',...HCE_FIELDS.map(([id])=>id)]
-    .some(id => hceInput(id)?.value.trim());
+function hceCaseStarted(entry) {
+  return entry.amountManual || entry.card || entry.success || HCE_FIELDS.some(([field])=>entry[field].trim());
+}
+
+function hceCaseComplete(entry) {
+  return !!entry.amount && (entry.success==='Y'||entry.success==='N') &&
+    (!entry.card || isCompleteCardNumber(entry.card));
+}
+
+function hceHasCurrent() { return hceEntries.some(entry=>!entry.saved&&hceCaseStarted(entry)); }
+
+function hceCaseMarkup(item,index) {
+  const label=item.type==='debit'?'체크카드':'신용카드';
+  const fields=HCE_FIELDS.map(([field,title,choices])=>`<div>
+    <label class="scenario-field-label" for="hce-${field}-${index}">${title}</label>
+    <input id="hce-${field}-${index}" class="form-input" maxlength="${field==='note'&&item.method==='실물 NFC'?491:500}" placeholder="선택하거나 직접 입력" oninput="setHceField(${index},'${field}',this.value)">
+    <div id="hce-choices-${field}-${index}" class="result-message-options">${choices.map((value,i)=>`<button type="button" class="result-message-chip" aria-pressed="false" onclick="chooseHceMessage(${index},'${field}',${i})">${value}</button>`).join('')}</div>
+  </div>`).join('');
+  return `<div class="scenario-item" id="hce-case-${index}">
+    <button type="button" class="scenario-item-header" id="hce-toggle-${index}" aria-expanded="false" aria-controls="hce-body-${index}" onclick="toggleHceCase(${index})">
+      <span class="scenario-item-num">${index+1}</span>
+      <span class="scenario-badges"><span class="scenario-badge scenario-badge-${item.type}">${label}</span><span class="scenario-badge scenario-badge-method">${item.method}</span></span>
+      <span id="hce-state-${index}" class="hce-case-status"></span><span class="scenario-item-chevron" aria-hidden="true">›</span>
+    </button>
+    <div class="scenario-item-body" id="hce-body-${index}"><fieldset class="scenario-item-body-inner" id="hce-fields-${index}" style="border:0;min-width:0;">
+      <label class="scenario-field-label" for="hce-card-${index}">카드번호 (선택)</label>
+      <div class="card-panel">
+        <select id="hce-recent-${index}" class="card-select" aria-label="최근 사용 카드" onchange="chooseHceRecent(${index},this.value)"></select>
+        <input id="hce-card-${index}" class="form-input" autocomplete="off" placeholder="끝 4자리 검색 또는 전체 번호" oninput="searchHceCards(${index},this)" onblur="maskHceCardField(${index})">
+        <div id="hce-matches-${index}" class="card-match-list"></div>
+      </div>
+      <label class="scenario-field-label" for="hce-amount-${index}">금액 (원)</label>
+      <input id="hce-amount-${index}" class="form-input" inputmode="numeric" oninput="setHceAmount(${index},this)">
+      <button type="button" id="hce-prev-${index}" class="value-prev-btn" onclick="useHcePreviousAmount(${index})" hidden></button>
+      <label class="scenario-field-label" for="hce-success-${index}">성공 여부</label>
+      <select id="hce-success-${index}" class="form-input" onchange="setHceField(${index},'success',this.value)">
+        <option value="">선택</option><option value="Y">Y</option><option value="N">N</option>
+      </select>
+      ${fields}
+    </fieldset></div>
+  </div>`;
+}
+
+function renderHceCases() {
+  for (const [tier,id] of [['high','hceHighCases'],['low','hceLowCases']]) {
+    hceInput(id).innerHTML=HCE_CASES.map((item,i)=>item.tier===tier?hceCaseMarkup(item,i):'').join('');
+  }
+  hceEntries.forEach((entry,index)=>{
+    maskHceCardField(index);
+    hceInput(`hce-success-${index}`).value=entry.success;
+    for (const [field] of HCE_FIELDS) {
+      hceInput(`hce-${field}-${index}`).value=entry[field];
+      highlightHceChoices(index,field);
+    }
+    renderHceRecent(index);
+    renderHceMatches(index);
+  });
+  renderHceAmounts();
+  renderHceStatus();
+}
+
+function toggleHceCase(index) {
+  if(hceBusy)return;
+  hceOpenIndex=hceOpenIndex===index?-1:index;
+  renderHceStatus();
 }
 
 function renderHceStatus() {
-  const recent = hceInput('hceRecent');
-  recent.replaceChildren(new Option('최근 사용 카드', ''));
-  getRecentCardOptions('', HCE_METHOD).forEach((card,index) => {
-    recent.add(new Option(maskCardNumber(card), String(index)));
+  let pending=0,incomplete=0,saved=0;
+  hceEntries.forEach((entry,index)=>{
+    const complete=hceCaseComplete(entry), started=hceCaseStarted(entry), open=hceOpenIndex===index;
+    if(entry.saved)saved++;
+    else if(complete)pending++;
+    else if(started)incomplete++;
+    const card=hceInput(`hce-case-${index}`);
+    card.classList.toggle('open',open);
+    card.classList.toggle('done-y',complete&&entry.success==='Y');
+    card.classList.toggle('done-n',complete&&entry.success==='N');
+    hceInput(`hce-toggle-${index}`).setAttribute('aria-expanded',String(open));
+    hceInput(`hce-state-${index}`).textContent=entry.saved?'저장됨':complete?entry.success+' · 완료':started?'작성 중':'';
+    hceInput(`hce-fields-${index}`).disabled=entry.saved||hceBusy;
   });
-  recent.hidden = recent.options.length === 1;
-  const previous = hceInput('hcePreviousAmount');
-  previous.hidden = !hcePreviousAmount;
-  previous.textContent = hcePreviousAmount ? `직전 금액 사용 · ${Number(hcePreviousAmount).toLocaleString('ko-KR')}원` : '';
-  hceInput('hceQueue').textContent = hceQueue.length ? `저장 대기 ${hceQueue.length}건` :
-    hceLastSaved.length ? `${hceLastDestination}에 ${hceLastSaved.length}건 저장됨 · 표 복사 및 엑셀 다운 가능` : '';
+  hceInput('hceMerchant').readOnly=hceInput('hceTerminal').readOnly=saved>0;
+  hceInput('hceProgress').textContent=`완료 ${pending+saved}/${HCE_CASES.length}건`+
+    (saved?` · ${hceLastDestination}에 ${saved}건 저장됨`:'')+
+    (incomplete?` · 미완료 ${incomplete}건은 제외됩니다.`:'');
 }
 
-function selectHceCard(card) {
-  hceSelectedCard = card;
-  hceInput('hceCard').value = maskCardNumber(card);
-  hceInput('hceMatches').replaceChildren();
-  const type = [['debitPhysical','debit'],['creditPhysical','credit'],['dual','dual']]
-    .find(([group]) => cardCatalog[group].includes(card));
-  if (type) hceInput('hceType').value = type[1];
-  rememberRecentCard('', HCE_METHOD, card);
+function newHceMerchant() {
+  if(hceBusy || (hceHasCurrent()&&!confirm('아직 저장하지 않은 HCE 입력이 있습니다. 새 가맹점 테스트를 시작할까요?')))return;
+  hceEntries=newHceEntries();
+  hceOpenIndex=0;
+  hceLastDestination='';
+  hceSessionId=newUploadSessionId();
+  hceInput('hceDate').value=hceToday();
+  hceInput('hceMerchant').value=hceInput('hceTerminal').value='';
+  renderHceCases();
+  hceInput('hceMerchant').focus();
+}
+
+function hceRecentCards(index) {
+  const category=HCE_CASES[index].category;
+  const options=getCardOptions(category,'실물 NFC');
+  return uniqueCards([...getRecentCardOptions(category,'실물 NFC'),...getRecentCardOptions('',HCE_METHOD)])
+    .filter(card=>options.includes(card)).slice(0,5);
+}
+
+function renderHceRecent(index) {
+  const recent=hceInput(`hce-recent-${index}`), cards=hceRecentCards(index);
+  recent.replaceChildren(new Option('최근 사용 카드',''),...cards.map((card,i)=>new Option(maskCardNumber(card),String(i))));
+  recent.hidden=!cards.length;
+}
+
+function selectHceCard(index,card) {
+  hceEntries[index].card=card;
+  const category=HCE_CASES[index].category;
+  rememberRecentCard(category,'실물 NFC',card);
+  maskHceCardField(index);
+  renderHceMatches(index);
+  hceEntries.forEach((_,i)=>renderHceRecent(i));
   renderHceStatus();
 }
 
-function chooseHceRecent(index) {
-  if (index === '') return;
-  const card = getRecentCardOptions('', HCE_METHOD)[Number(index)];
-  if (card) selectHceCard(card);
+function chooseHceRecent(index,option) {
+  if(option==='')return;
+  const card=hceRecentCards(index)[Number(option)];
+  if(card)selectHceCard(index,card);
 }
 
-function searchHceCards() {
-  hceSelectedCard = '';
-  const value = sanitizeCardNumber(hceInput('hceCard').value);
-  hceInput('hceCard').value = value;
-  const matches = hceInput('hceMatches');
-  matches.replaceChildren();
-  const exact = getCardOptions('', HCE_METHOD).find(card => card === value);
-  if (exact) { selectHceCard(exact); return; }
-  for (const card of findCardSuffixMatches('', HCE_METHOD, value)) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'result-message-chip';
-    button.textContent = maskCardNumber(card);
-    button.onclick = () => selectHceCard(card);
-    matches.appendChild(button);
+function maskHceCardField(index) {
+  const card=hceEntries[index].card;
+  hceInput(`hce-card-${index}`).value=isCompleteCardNumber(card)?maskCardNumber(card):card;
+}
+
+function renderHceMatches(index) {
+  const entry=hceEntries[index], box=hceInput(`hce-matches-${index}`);
+  box.replaceChildren();
+  if (entry.card.length!==4) return;
+  const matches=findCardSuffixMatches(HCE_CASES[index].category,'실물 NFC',entry.card);
+  for (const card of matches) {
+    const button=document.createElement('button');
+    button.type='button';button.className='result-message-chip';button.textContent=maskCardNumber(card);
+    button.onclick=()=>selectHceCard(index,card);
+    box.appendChild(button);
   }
+  if(!matches.length)box.textContent='일치하는 카드가 없습니다. 전체 번호를 입력하거나 비워두세요.';
 }
 
-function useHcePreviousAmount() {
-  hceInput('hceAmount').value = hcePreviousAmount;
-}
-
-function readHceRow() {
-  const value = id => hceInput(id).value.trim();
-  const merchant = value('hceMerchant'), terminal = value('hceTerminal'), amount = value('hceAmount');
-  const card = hceSelectedCard || sanitizeCardNumber(value('hceCard'));
-  const success = value('hceSuccess');
-  if (!merchant || !terminal || !amount || !success) {
-    showToast('가맹점명, 단말기 모델, 금액, 성공 여부를 입력해주세요.');
-    return null;
+function searchHceCards(index,input) {
+  const value=sanitizeCardNumber(input.value);
+  input.value=value;
+  hceEntries[index].card=value;
+  const matches=findCardSuffixMatches(HCE_CASES[index].category,'실물 NFC',value);
+  if(matches.length===1){selectHceCard(index,matches[0]);return;}
+  if (isCompleteCardNumber(value) && getCardOptions(HCE_CASES[index].category,'실물 NFC').includes(value)) {
+    selectHceCard(index,value);return;
   }
-  if (card && !isCompleteCardNumber(card)) {
-    showToast('검색 결과에서 카드를 선택하거나 전체 번호를 입력해주세요. 카드번호는 비워도 됩니다.');
-    return null;
-  }
-  return [value('hceDate'),merchant,terminal,card,value('hceType'),'',Number(amount),success,
-    ...HCE_FIELDS.map(([id])=>value(id))];
-}
-
-function appendHceCurrent() {
-  const row = readHceRow();
-  if (!row) return false;
-  hceQueue.push(row);
-  hcePreviousAmount = String(row[6]);
-  hceSelectedCard = '';
-  ['hceCard','hceType','hceAmount','hceSuccess',...HCE_FIELDS.map(([id])=>id)].forEach(id => {
-    hceInput(id).value = '';
-    if (id !== 'hceCard') hceInput(id).dispatchEvent(new Event('input'));
-  });
-  hceInput('hceMatches').replaceChildren();
-  hceInput('hceDate').value = hceToday();
+  renderHceMatches(index);
   renderHceStatus();
-  return true;
 }
 
-function nextHceTest() {
-  if (!hceBusy && appendHceCurrent()) hceInput('hceCard').focus();
+function renderHceAmounts() {
+  hceEntries.forEach((entry,index)=>{
+    const amount=hceInput(`hce-amount-${index}`), previous=hceInput(`hce-prev-${index}`);
+    if(document.activeElement!==amount)amount.value=entry.amount?Number(entry.amount).toLocaleString('ko-KR'):'';
+    const last=hceAmounts[HCE_CASES[index].tier];
+    previous.hidden=entry.saved||!last||Number(last)===Number(entry.amount||-1);
+    previous.textContent=previous.hidden?'':`직전 금액 사용 · ${Number(last).toLocaleString('ko-KR')}원`;
+  });
 }
 
-function hceRowsForExport(includeSaved = true) {
-  if (hceHasCurrent()) {
-    const row = readHceRow();
-    return row ? [...hceQueue,row] : [];
+function setHceAmount(index,input) {
+  const entry=hceEntries[index], raw=hceAmountDigits(input.value), tier=HCE_CASES[index].tier;
+  entry.amount=raw?String(Number(raw)):'';
+  entry.amountManual=!!raw;
+  input.value=raw?Number(raw).toLocaleString('ko-KR'):'';
+  if(raw) {
+    hceAmounts[tier]=entry.amount;
+    try{localStorage.setItem(HCE_AMOUNTS_KEY,JSON.stringify(hceAmounts));}catch(err){}
+    hceEntries.forEach((other,i)=>{
+      if(i!==index&&HCE_CASES[i].tier===tier&&!other.amountManual&&!other.success&&!other.saved)other.amount=entry.amount;
+    });
   }
-  if (includeSaved && !hceQueue.length && hceLastSaved.length) return hceLastSaved.slice();
-  if (!hceQueue.length) showToast('먼저 테스트 내용을 입력해주세요.');
-  return hceQueue.slice();
+  renderHceAmounts();
+  renderHceStatus();
+}
+
+function useHcePreviousAmount(index) {
+  const amount=hceInput(`hce-amount-${index}`);
+  amount.value=hceAmounts[HCE_CASES[index].tier];
+  setHceAmount(index,amount);
+}
+
+function highlightHceChoices(index,field) {
+  for (const button of hceInput(`hce-choices-${field}-${index}`).children) {
+    const selected=button.textContent===hceEntries[index][field];
+    button.classList.toggle('active',selected);
+    button.setAttribute('aria-pressed',String(selected));
+  }
+}
+
+function setHceField(index,field,value) {
+  hceEntries[index][field]=value;
+  if(field!=='success')highlightHceChoices(index,field);
+  renderHceStatus();
+}
+
+function chooseHceMessage(index,field,option) {
+  const value=HCE_FIELDS.find(([name])=>name===field)[2][option];
+  hceInput(`hce-${field}-${index}`).value=value;
+  setHceField(index,field,value);
+}
+
+function hceExportBatch(includeSaved=true) {
+  const date=hceInput('hceDate').value, merchant=hceInput('hceMerchant').value.trim(), terminal=hceInput('hceTerminal').value.trim();
+  if(!merchant||!terminal){showToast('가맹점명과 단말기 모델을 입력해주세요.');return {rows:[],indexes:[]};}
+  const rows=[], indexes=[];
+  hceEntries.forEach((entry,index)=>{
+    if(!hceCaseComplete(entry)||(!includeSaved&&entry.saved))return;
+    const item=HCE_CASES[index], note=entry.note.trim();
+    const resultNote=item.method==='실물 NFC'?['실물 NFC',note].filter(Boolean).join(' · '):note;
+    rows.push([date,merchant,terminal,entry.card,item.type,'',Number(entry.amount),entry.success,
+      entry.terminalResult.trim(),entry.appResult.trim(),resultNote]);
+    indexes.push(index);
+  });
+  if(!rows.length)showToast('금액과 성공 여부를 입력해 케이스를 한 건 이상 완료해주세요.');
+  return {rows,indexes};
 }
 
 async function copyHceTests() {
-  const rows = hceRowsForExport();
+  const {rows} = hceExportBatch();
   if (!rows.length) return;
   const text = rows.map(row=>row.map((cell,index)=>{
     const value = String(cell).replace(/[\t\r\n]+/g,' ');
@@ -1815,7 +1917,7 @@ async function copyHceTests() {
 }
 
 function downloadHceTests() {
-  const rows = hceRowsForExport();
+  const {rows} = hceExportBatch();
   if (!rows.length) return;
   if (typeof XLSX === 'undefined') { showToast('엑셀 기능을 불러오지 못했습니다.'); return; }
   const sheet = XLSX.utils.aoa_to_sheet([HCE_HEADERS,...rows]);
@@ -1827,13 +1929,12 @@ function downloadHceTests() {
 
 async function uploadHceTests() {
   if (hceBusy) return;
-  const rows = hceRowsForExport(false);
+  const {rows,indexes} = hceExportBatch(false);
   if (!rows.length) return;
-  if (rows.length > 100) { showToast('한 번에 최대 100건을 저장할 수 있습니다.'); return; }
   hceBusy = true;
-  const buttons = hceInput('screen-hce').querySelectorAll('.bottom-bar button, .value-prev-btn');
-  const entries = hceInput('screen-hce').querySelectorAll('input,select,#hceMessages button,#hceMatches button');
-  [...buttons,...entries].forEach(control => control.disabled = true);
+  const controls=hceInput('screen-hce').querySelectorAll('.back-btn,.bottom-bar button,#hceNewMerchant,#hceMerchant,#hceTerminal,#hceAccessKey');
+  controls.forEach(control=>control.disabled=true);
+  renderHceStatus();
   try {
     const url = settings.sheetsUrl;
     const cap = await sheetsGet('hceCapabilities');
@@ -1845,25 +1946,22 @@ async function uploadHceTests() {
     const accessKey = hceInput('hceAccessKey').value.trim();
     if (!accessKey) { showToast('시트 업로드에는 HCE 연결 키가 필요합니다.'); return; }
     const payload = {action:'saveHceTests',rows};
-    const uploadId = await uploadReceiptKey(payload,hceSessionId,url);
+    const uploadId = await uploadReceiptKey({...payload,caseIndexes:indexes},hceSessionId,url);
     const result = await sheetsPost({...payload,uploadId,accessKey},url);
     if (!result?.ok) {
       showToast(result?.error || '저장 응답이 없습니다. 같은 내용으로 다시 누르면 중복 저장을 방지합니다.');
       return;
     }
-    if (hceHasCurrent()) appendHceCurrent();
-    hceQueue = [];
-    hceLastSaved = rows;
+    indexes.forEach(index=>hceEntries[index].saved=true);
     hceLastDestination = result.destination || 'HCE 시트';
-    hcePreviousAmount = String(rows[rows.length-1][6]);
-    hceSessionId = newUploadSessionId();
-    renderHceStatus();
     showToast(`${result.destination || 'HCE 시트'}에 ${rows.length}건 저장했습니다.`);
   } catch (err) {
     showToast('연결 오류가 발생했습니다. 입력 내용을 보존했습니다.');
   } finally {
-    [...buttons,...entries].forEach(control => control.disabled = false);
     hceBusy = false;
+    controls.forEach(control=>control.disabled=false);
+    renderHceAmounts();
+    renderHceStatus();
   }
 }
 
@@ -1878,7 +1976,7 @@ window.addEventListener('beforeunload', e => {
   const cur=screenHistory[screenHistory.length-1];
   if(cur==='scenario'&&hasScenarioData())saveScenarioDraft();
   const dirty = (cur==='test' && records.some(r => r.category || r.amount || r.subCategory)) ||
-    hceQueue.length || hceHasCurrent();
+    hceHasCurrent();
   if (dirty) {
     e.preventDefault();
     e.returnValue = '';
@@ -1894,6 +1992,7 @@ window.addEventListener('popstate',()=>{
     return;
   }
   const cur=screenHistory[screenHistory.length-1];
+  if(cur==='hce' && hceBusy){pushState();return;}
   if(cur==='test' && records.some(r=>r.category||r.amount||r.subCategory)){
     if(!confirm('저장을 완료한 후 테스트를 종료해 주세요.\n그래도 나가시겠습니까?')){pushState();return;}
   }
