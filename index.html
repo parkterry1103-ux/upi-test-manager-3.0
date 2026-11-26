@@ -352,7 +352,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v8.0</div>
+    <div class="main-version">UPI Test Manager v8.1</div>
   </div>
 </div>
 
@@ -412,7 +412,7 @@
       <label class="section-label" for="hceAccessKey">HCE 연결 키 (시트 업로드용)</label>
       <input id="hceAccessKey" class="form-input" type="password" autocomplete="off" spellcheck="false" maxlength="128">
       <div id="hceRememberLabel" class="hce-amount-hint" hidden>
-        <div>키를 입력해 저장하면 이 브라우저에서 <span id="hceRememberDuration">7일</span> 동안 연결을 기억합니다.</div>
+        <div>키를 입력해 저장하면 이 브라우저에서 <span id="hceRememberDuration">6개월</span> 동안 연결을 기억합니다.</div>
         <label><input id="hceSharedDevice" type="checkbox"> 공용 기기 · 연결 기억하지 않기</label>
       </div>
     </div>
@@ -2001,7 +2001,7 @@ async function uploadHceTests() {
       return;
     }
     hceRememberAvailable=Boolean(cap.rememberBrowser)&&hceCanRemember(url);
-    if(hceRememberAvailable)hceInput('hceRememberDuration').textContent=cap.rememberDays===7?'7일':'8시간';
+    if(hceRememberAvailable)hceInput('hceRememberDuration').textContent=cap.rememberMonths===6?'6개월':cap.rememberDays===7?'7일':'8시간';
     let session=hceRememberAvailable?getHceBrowserSession(url):null;
     const accessKey=hceInput('hceAccessKey').value.trim();
     if(!session&&!accessKey) {
