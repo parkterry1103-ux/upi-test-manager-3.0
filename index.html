@@ -352,7 +352,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v7.9</div>
+    <div class="main-version">UPI Test Manager v8.0</div>
   </div>
 </div>
 
@@ -411,9 +411,10 @@
     <div id="hceAccess" hidden>
       <label class="section-label" for="hceAccessKey">HCE 연결 키 (시트 업로드용)</label>
       <input id="hceAccessKey" class="form-input" type="password" autocomplete="off" spellcheck="false" maxlength="128">
-      <label id="hceRememberLabel" class="hce-amount-hint" hidden>
-        <input id="hceRemember" type="checkbox"> 이 브라우저에서 <span id="hceRememberDuration">7일</span> 기억 (개인 기기에서만)
-      </label>
+      <div id="hceRememberLabel" class="hce-amount-hint" hidden>
+        <div>키를 입력해 저장하면 이 브라우저에서 <span id="hceRememberDuration">7일</span> 동안 연결을 기억합니다.</div>
+        <label><input id="hceSharedDevice" type="checkbox"> 공용 기기 · 연결 기억하지 않기</label>
+      </div>
     </div>
     <div id="hceRemembered" style="margin-top:12px;" hidden>
       <span class="hce-amount-hint">이 브라우저에서 HCE 업로드 연결됨</span>
@@ -1669,7 +1670,7 @@ function forgetHceBrowser() {
   hceBrowserSession=null;
   try{localStorage.removeItem(HCE_BROWSER_SESSION_KEY);}catch(err){}
   hceInput('hceAccessKey').value='';
-  hceInput('hceRemember').checked=false;
+  hceInput('hceSharedDevice').checked=false;
   renderHceBrowserSession(true);
 }
 
@@ -1989,7 +1990,7 @@ async function uploadHceTests() {
   const {rows,indexes} = hceExportBatch(false);
   if (!rows.length) return;
   hceBusy = true;
-  const controls=hceInput('screen-hce').querySelectorAll('.back-btn,.bottom-bar button,#hceNewMerchant,#hceMerchant,#hceTerminal,#hceAccessKey,#hceForget,#hceRemember');
+  const controls=hceInput('screen-hce').querySelectorAll('.back-btn,.bottom-bar button,#hceNewMerchant,#hceMerchant,#hceTerminal,#hceAccessKey,#hceForget,#hceSharedDevice');
   controls.forEach(control=>control.disabled=true);
   renderHceStatus();
   try {
@@ -2008,17 +2009,19 @@ async function uploadHceTests() {
       showToast('처음 한 번 HCE 연결 키를 입력해주세요.');
       return;
     }
-    if(!session&&hceRememberAvailable&&hceInput('hceRemember').checked) {
+    let rememberFailed=false;
+    if(!session&&hceRememberAvailable&&!hceInput('hceSharedDevice').checked) {
       const result=await sheetsPost({action:'hceStartSession',accessKey},url);
-      if(!result?.ok) {
-        showToast(result?.error||'브라우저 연결에 실패했습니다. 다시 시도해주세요.');
+      if(result?.authRequired) {
+        showToast(result.error||'HCE 연결 키를 확인해주세요.');
         return;
       }
-      session={token:result.token,expiresAt:result.expiresAt};
-      hceBrowserSession=session;
-      try{localStorage.setItem(HCE_BROWSER_SESSION_KEY,JSON.stringify(session));}catch(err){}
-      hceInput('hceAccessKey').value='';
-      hceInput('hceRemember').checked=false;
+      if(result?.ok&&typeof result.token==='string'&&Number.isSafeInteger(result.expiresAt)) {
+        session={token:result.token,expiresAt:result.expiresAt};
+        hceBrowserSession=session;
+        try{localStorage.setItem(HCE_BROWSER_SESSION_KEY,JSON.stringify(session));}catch(err){rememberFailed=true;}
+        hceInput('hceAccessKey').value='';
+      } else rememberFailed=true;
     }
     renderHceBrowserSession(!session);
     const payload = {action:'saveHceTests',rows};
@@ -2037,7 +2040,9 @@ async function uploadHceTests() {
     }
     indexes.forEach(index=>hceEntries[index].saved=true);
     hceLastDestination = result.destination || 'HCE 시트';
-    showToast(`${result.destination || 'HCE 시트'}에 ${rows.length}건 저장했습니다.`);
+    if(hceInput('hceSharedDevice').checked)hceInput('hceAccessKey').value='';
+    showToast(`${result.destination || 'HCE 시트'}에 ${rows.length}건 저장했습니다.`+
+      (rememberFailed?' 이 브라우저에 연결을 기억하지 못했습니다.':''));
   } catch (err) {
     showToast('연결 오류가 발생했습니다. 입력 내용을 보존했습니다.');
   } finally {
