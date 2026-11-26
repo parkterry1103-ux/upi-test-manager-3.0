@@ -352,7 +352,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v8.1</div>
+    <div class="main-version">UPI Test Manager v8.2</div>
   </div>
 </div>
 
@@ -1623,8 +1623,10 @@ function confirmScenarioGoBack(){
 // ══ HCE 테스트 ══
 const HCE_HEADERS = [
   'Date','Merchant','Terminal Model','Card Number','Card Type','Transaction Type',
-  'Transaction Amount','Success?','Test result - 终端提示','Test result - APP提示','备注'
+  'Transaction Amount','Terminal Request PIN？','Terminal Request SIGN？','Success?',
+  'Test result - 终端提示','Test result - APP提示','备注'
 ];
+const HCE_TOGGLES=[['pin','PIN 요청'],['sign','사인 요청'],['success','결제 성공']];
 const HCE_METHOD = 'HCE(Android)';
 const HCE_CASES = [
   {tier:'high',type:'debit',category:'체크카드',method:'HCE'},
@@ -1698,7 +1700,7 @@ function hceAmountDigits(value) { return String(value??'').replace(/\D/g,'').sli
 let hceAmounts = loadHceAmounts();
 function newHceEntries() {
   return HCE_CASES.map(item=>({amount:hceAmounts[item.tier],amountManual:false,card:'',
-    success:'',terminalResult:'',appResult:'',note:'',saved:false}));
+    pin:'',sign:'',success:'',terminalResult:'',appResult:'',note:'',saved:false}));
 }
 let hceEntries = newHceEntries();
 let hceLastDestination = '';
@@ -1721,7 +1723,7 @@ function openHceTest() {
 }
 
 function hceCaseStarted(entry) {
-  return entry.amountManual || entry.card || entry.success || HCE_FIELDS.some(([field])=>entry[field].trim());
+  return entry.amountManual || entry.card || HCE_TOGGLES.some(([field])=>entry[field]) || HCE_FIELDS.some(([field])=>entry[field].trim());
 }
 
 function hceCaseComplete(entry) {
@@ -1730,6 +1732,23 @@ function hceCaseComplete(entry) {
 }
 
 function hceHasCurrent() { return hceEntries.some(entry=>!entry.saved&&hceCaseStarted(entry)); }
+
+function cycleHceToggle(index,field) {
+  const entry=hceEntries[index];
+  if(!entry||entry.saved||hceBusy||!HCE_TOGGLES.some(([key])=>key===field))return;
+  const values=['','Y','N'];
+  entry[field]=values[(values.indexOf(entry[field])+1)%values.length];
+  renderHceStatus();
+}
+
+function renderHceToggles(index,entry) {
+  for(const [field,label] of HCE_TOGGLES) {
+    const value=entry[field], button=hceInput(`hce-${field}-${index}`);
+    button.textContent=value||'N/A';
+    button.className='toggle-btn '+(value==='Y'?'state-y':value==='N'?'state-n':'state-na');
+    button.setAttribute('aria-label',`${label}: ${value||'미입력'}`);
+  }
+}
 
 function hceCaseMarkup(item,index) {
   const label=item.type==='debit'?'체크카드':'신용카드';
@@ -1754,10 +1773,13 @@ function hceCaseMarkup(item,index) {
       <label class="scenario-field-label" for="hce-amount-${index}">금액 (원)</label>
       <input id="hce-amount-${index}" class="form-input" inputmode="numeric" oninput="setHceAmount(${index},this)">
       <button type="button" id="hce-prev-${index}" class="value-prev-btn" onclick="useHcePreviousAmount(${index})" hidden></button>
-      <label class="scenario-field-label" for="hce-success-${index}">성공 여부</label>
-      <select id="hce-success-${index}" class="form-input" onchange="setHceField(${index},'success',this.value)">
-        <option value="">선택</option><option value="Y">Y</option><option value="N">N</option>
-      </select>
+      <div class="scenario-field-label">기능 지원</div>
+      <div class="scenario-toggle-grid">
+        ${HCE_TOGGLES.map(([field,title])=>`<div class="toggle-row">
+          <span class="toggle-label">${title}</span>
+          <button type="button" class="toggle-btn state-na" id="hce-${field}-${index}" onclick="cycleHceToggle(${index},'${field}')">N/A</button>
+        </div>`).join('')}
+      </div>
       ${fields}
     </fieldset></div>
   </div>`;
@@ -1769,7 +1791,6 @@ function renderHceCases() {
   }
   hceEntries.forEach((entry,index)=>{
     maskHceCardField(index);
-    hceInput(`hce-success-${index}`).value=entry.success;
     for (const [field] of HCE_FIELDS) {
       hceInput(`hce-${field}-${index}`).value=entry[field];
       highlightHceChoices(index,field);
@@ -1801,6 +1822,7 @@ function renderHceStatus() {
     hceInput(`hce-toggle-${index}`).setAttribute('aria-expanded',String(open));
     hceInput(`hce-state-${index}`).textContent=entry.saved?'저장됨':complete?entry.success+' · 완료':started?'작성 중':'';
     hceInput(`hce-fields-${index}`).disabled=entry.saved||hceBusy;
+    renderHceToggles(index,entry);
   });
   hceInput('hceMerchant').readOnly=hceInput('hceTerminal').readOnly=saved>0;
   hceInput('hceProgress').textContent=`완료 ${pending+saved}/${HCE_CASES.length}건`+
@@ -1941,7 +1963,7 @@ function hceExportBatch(includeSaved=true) {
     if(!hceCaseComplete(entry)||(!includeSaved&&entry.saved))return;
     const item=HCE_CASES[index], note=entry.note.trim();
     const resultNote=item.method==='실물 NFC'?['실물 NFC',note].filter(Boolean).join(' · '):note;
-    rows.push([date,merchant,terminal,entry.card,item.type,'',Number(entry.amount),entry.success,
+    rows.push([date,merchant,terminal,entry.card,item.type,'',Number(entry.amount),entry.pin,entry.sign,entry.success,
       entry.terminalResult.trim(),entry.appResult.trim(),resultNote]);
     indexes.push(index);
   });
@@ -1998,6 +2020,10 @@ async function uploadHceTests() {
     const cap = await sheetsGet('hceCapabilities');
     if (!cap?.ok || !cap.hce) {
       showToast('HCE 시트 연결을 확인할 수 없습니다. 표 복사 또는 엑셀 다운을 이용해주세요.');
+      return;
+    }
+    if (!cap.pinSign) {
+      showToast('HCE 서버가 아직 PIN·사인 열을 지원하지 않습니다. 표 복사 또는 엑셀 다운을 이용해주세요.');
       return;
     }
     hceRememberAvailable=Boolean(cap.rememberBrowser)&&hceCanRemember(url);
