@@ -148,6 +148,9 @@
     #screen-hce .hce-amount-hint{color:#536784;font-size:12px;}
     #screen-hce .hce-case-status{font-size:11px;color:#536784;white-space:nowrap;}
     #screen-hce .hce-case-list .form-input{max-width:100%;}
+    #screen-hce .hce-recent-results{margin-top:8px;}
+    #screen-hce .hce-recent-results summary{font-size:12px;color:#536784;cursor:pointer;}
+    #screen-hce .hce-recent-results .result-message-chip{max-width:100%;white-space:normal;overflow-wrap:anywhere;}
     #hceRememberLabel:not([hidden]){display:block;margin:8px 0;}
     .section-label{font-size:13px;color:#555;font-weight:700;margin:20px 0 10px;padding-left:10px;border-left:4px solid var(--blue);}
     .store-input-wrap{background:white;border-radius:14px;padding:14px 16px;box-shadow:var(--card-shadow);margin-bottom:4px;}
@@ -352,7 +355,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v8.3</div>
+    <div class="main-version">UPI Test Manager v8.4</div>
   </div>
 </div>
 
@@ -1641,6 +1644,62 @@ const HCE_FIELDS = [
   ['note','비고 · 备注',['按热键','不按热键','VISA only']]
 ];
 const hceInput = id => document.getElementById(id);
+const HCE_RECENT_RESULT_KEY=STORE_KEY+'_hce_recent_results';
+const HCE_RECENT_RESULT_LIMIT=12;
+const HCE_RESULT_COLUMNS={terminalResult:10,appResult:11};
+let hceRecentResults=loadHceRecentResults();
+
+function hceResultKey(value) {
+  return value.normalize('NFC').trim().replace(/\s+/g,' ').toLowerCase();
+}
+
+function normalizeHceRecentResults(raw) {
+  const result={};
+  for(const field of Object.keys(HCE_RESULT_COLUMNS)) {
+    const defaults=HCE_FIELDS.find(([name])=>name===field)[2];
+    const seen=new Set(defaults.map(hceResultKey));
+    result[field]=[];
+    for(const text of Array.isArray(raw?.[field])?raw[field]:[]) {
+      if(typeof text!=='string')continue;
+      const phrase=text.trim(), key=hceResultKey(phrase);
+      if(!phrase||phrase.length>500||seen.has(key))continue;
+      seen.add(key);
+      result[field].push(phrase);
+      if(result[field].length===HCE_RECENT_RESULT_LIMIT)break;
+    }
+  }
+  return result;
+}
+
+function loadHceRecentResults(fallback=null) {
+  try {
+    const raw=localStorage.getItem(HCE_RECENT_RESULT_KEY);
+    return normalizeHceRecentResults(raw===null?fallback:JSON.parse(raw));
+  } catch(err) { return normalizeHceRecentResults(fallback); }
+}
+
+function rememberHceResults(rows) {
+  const latest=loadHceRecentResults(hceRecentResults);
+  const used=rows.slice().reverse();
+  const next=normalizeHceRecentResults(Object.fromEntries(Object.entries(HCE_RESULT_COLUMNS)
+    .map(([field,column])=>[field,[...used.map(row=>row[column]),...latest[field]]])));
+  const changed=JSON.stringify(next)!==JSON.stringify(hceRecentResults);
+  hceRecentResults=next;
+  if(JSON.stringify(next)!==JSON.stringify(latest)) {
+    try{localStorage.setItem(HCE_RECENT_RESULT_KEY,JSON.stringify(next));}catch(err){}
+  }
+  if(changed)refreshHceRecentResults();
+}
+
+function refreshHceRecentResults() {
+  HCE_CASES.forEach((_,index)=>{
+    for(const field of Object.keys(HCE_RESULT_COLUMNS)) {
+      renderHceRecentResults(index,field);
+      if(hceInput(`hce-choices-${field}-${index}`))highlightHceChoices(index,field);
+    }
+  });
+}
+
 const HCE_AMOUNTS_KEY = STORE_KEY+'_hce_tier_amounts';
 const HCE_BROWSER_SESSION_KEY = STORE_KEY+'_hce_browser_session:'+location.pathname;
 let hceRememberAvailable=false;
@@ -1684,6 +1743,10 @@ function renderHceBrowserSession(prompt=false) {
 }
 
 window.addEventListener('storage',event=>{
+  if(event.key===HCE_RECENT_RESULT_KEY || event.key===null) {
+    hceRecentResults=loadHceRecentResults();
+    refreshHceRecentResults();
+  }
   if(event.key===HCE_BROWSER_SESSION_KEY) {
     hceBrowserSession=null;
     renderHceBrowserSession();
@@ -1717,6 +1780,7 @@ function hceToday() {
 
 function openHceTest() {
   if (!hceInput('hceDate').value || !hceEntries.some(hceCaseStarted)) hceInput('hceDate').value=hceToday();
+  hceRecentResults=loadHceRecentResults(hceRecentResults);
   renderHceCases();
   renderHceBrowserSession();
   goTo('hce');
@@ -1756,6 +1820,10 @@ function hceCaseMarkup(item,index) {
     <label class="scenario-field-label" for="hce-${field}-${index}">${title}</label>
     <input id="hce-${field}-${index}" class="form-input" maxlength="${field==='note'&&item.method==='실물 NFC'?491:500}" placeholder="선택하거나 직접 입력" oninput="setHceField(${index},'${field}',this.value)">
     <div id="hce-choices-${field}-${index}" class="result-message-options">${choices.map((value,i)=>`<button type="button" class="result-message-chip" aria-pressed="false" onclick="chooseHceMessage(${index},'${field}',${i})">${value}</button>`).join('')}</div>
+    ${Object.hasOwn(HCE_RESULT_COLUMNS,field)?`<details id="hce-recent-results-${field}-${index}" class="hce-recent-results" open hidden>
+      <summary>최근 직접 입력</summary>
+      <div id="hce-recent-choices-${field}-${index}" class="result-message-options"></div>
+    </details>`:''}
   </div>`).join('');
   return `<div class="scenario-item" id="hce-case-${index}">
     <button type="button" class="scenario-item-header" id="hce-toggle-${index}" aria-expanded="false" aria-controls="hce-body-${index}" onclick="toggleHceCase(${index})">
@@ -1793,6 +1861,7 @@ function renderHceCases() {
     maskHceCardField(index);
     for (const [field] of HCE_FIELDS) {
       hceInput(`hce-${field}-${index}`).value=entry[field];
+      if(Object.hasOwn(HCE_RESULT_COLUMNS,field))renderHceRecentResults(index,field);
       highlightHceChoices(index,field);
     }
     renderHceRecent(index);
@@ -1935,11 +2004,31 @@ function useHcePreviousAmount(index) {
   setHceAmount(index,amount);
 }
 
+function renderHceRecentResults(index,field) {
+  const box=hceInput(`hce-recent-choices-${field}-${index}`);
+  if(!box)return;
+  const values=hceRecentResults[field];
+  hceInput(`hce-recent-results-${field}-${index}`).hidden=!values.length;
+  box.replaceChildren(...values.map(value=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='result-message-chip';
+    button.textContent=value;
+    button.onclick=()=>selectHceResult(index,field,value);
+    return button;
+  }));
+}
+
 function highlightHceChoices(index,field) {
-  for (const button of hceInput(`hce-choices-${field}-${index}`).children) {
-    const selected=button.textContent===hceEntries[index][field];
-    button.classList.toggle('active',selected);
-    button.setAttribute('aria-pressed',String(selected));
+  const current=hceResultKey(hceEntries[index][field]);
+  for(const prefix of ['hce-choices','hce-recent-choices']) {
+    const box=hceInput(`${prefix}-${field}-${index}`);
+    if(!box)continue;
+    for(const button of box.children) {
+      const selected=hceResultKey(button.textContent)===current;
+      button.classList.toggle('active',selected);
+      button.setAttribute('aria-pressed',String(selected));
+    }
   }
 }
 
@@ -1951,6 +2040,11 @@ function setHceField(index,field,value) {
 
 function chooseHceMessage(index,field,option) {
   const value=HCE_FIELDS.find(([name])=>name===field)[2][option];
+  selectHceResult(index,field,value);
+}
+
+function selectHceResult(index,field,value) {
+  if(hceBusy||hceEntries[index].saved)return;
   hceInput(`hce-${field}-${index}`).value=value;
   setHceField(index,field,value);
 }
@@ -1992,6 +2086,7 @@ async function copyHceTests() {
       field.remove();
       if (!copied) throw Error('Clipboard unavailable');
     }
+    rememberHceResults(rows);
     showToast('복사했습니다. 시트의 C열부터 붙여넣으세요.');
   } catch (err) { showToast('복사할 수 없습니다. 엑셀 다운을 이용해주세요.'); }
 }
@@ -2005,6 +2100,7 @@ function downloadHceTests() {
   const book = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(book,sheet,'HCE Test');
   XLSX.writeFile(book,`HCE_Test_${hceToday()}.xlsx`);
+  rememberHceResults(rows);
 }
 
 async function uploadHceTests() {
@@ -2065,6 +2161,7 @@ async function uploadHceTests() {
       return;
     }
     indexes.forEach(index=>hceEntries[index].saved=true);
+    rememberHceResults(rows);
     hceLastDestination = result.destination || 'HCE 시트';
     if(hceInput('hceSharedDevice').checked)hceInput('hceAccessKey').value='';
     showToast(`${result.destination || 'HCE 시트'}에 ${rows.length}건 저장했습니다.`+
