@@ -352,7 +352,7 @@
       <button class="main-btn main-btn-secondary" onclick="goToUnitTest()" style="animation-delay:0.25s">🔍 건별 테스트</button>
       <button class="main-btn main-btn-secondary" onclick="openHceTest()" style="animation-delay:0.35s">📱 HCE 테스트</button>
     </div>
-    <div class="main-version">UPI Test Manager v8.2</div>
+    <div class="main-version">UPI Test Manager v8.3</div>
   </div>
 </div>
 
@@ -1636,8 +1636,8 @@ const HCE_CASES = [
   {tier:'low',type:'credit',category:'신용카드',method:'HCE'}
 ];
 const HCE_FIELDS = [
-  ['terminalResult','단말기 결과 · 终端提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','该商户保护支持代办业务','无法进行交易']],
-  ['appResult','앱 결과 · APP提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','无法进行交易']],
+  ['terminalResult','단말기 결과 · 终端提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','该商户保护支持代办业务','无法进行交易','联系卡司']],
+  ['appResult','앱 결과 · APP提示',['余额不足','交易成功','撤销成功','不支持RF','没有反应','无反应','无法进行交易','交易结果以银行动账通知为准']],
   ['note','비고 · 备注',['按热键','不按热键','VISA only']]
 ];
 const hceInput = id => document.getElementById(id);
